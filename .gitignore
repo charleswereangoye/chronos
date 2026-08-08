@@ -31,3 +31,6 @@ venv.bak/
 
 # Session Data
 state.json
+history.json
+output/
+social_agent/output/
