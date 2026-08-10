@@ -13,27 +13,27 @@
 </head>
 <body class="w-[1080px] h-[1350px] flex items-center justify-center p-12">
 
-  <div id="tweet-card" class="w-full max-w-[850px] flex flex-col justify-center space-y-6">
+  <div id="tweet-card" class="w-full max-w-[900px] flex flex-col justify-center space-y-10">
     
-    <div class="flex items-center space-y-0 space-x-4">
-      <img src="profile.png" class="w-16 h-16 rounded-full object-cover" alt="Profile">
+    <div class="flex items-center space-y-0 space-x-6">
+      <img src="profile.png" class="w-32 h-32 rounded-full object-cover" alt="Profile">
       <div>
-        <div class="flex items-center space-x-1.5">
-          <span class="font-bold text-xl text-white">Chalee Black Trades</span>
-          <svg class="w-5 h-5 text-[#1d9bf0]" fill="currentColor" viewBox="0 0 24 24">
+        <div class="flex items-center space-x-3">
+          <span class="font-bold text-[45px] text-white">Chalee Black Trades</span>
+          <svg class="w-[35px] h-[35px] text-[#1d9bf0]" fill="currentColor" viewBox="0 0 24 24">
             <path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.79-4-4-4-.495 0-.965.084-1.4.238C14.55 2.475 13.18 1.6 11.6 1.6c-1.58 0-2.95.875-3.6 2.148-.435-.154-.905-.238-1.4-.238-2.21 0-4 1.79-4 4 0 .495.084.965.238 1.4C1.475 9.55.6 10.92.6 12.5c0 1.58.875 2.95 2.148 3.6-.154.435-.238.905-.238 1.4 0 2.21 1.79 4 4 4 .495 0 .965-.084 1.4-.238 1.05 1.273 2.42 2.148 4 2.148 1.58 0 2.95-.875 3.6-2.148.435.154.905.238 1.4.238 2.21 0 4-1.79 4-4 0-.495-.084-.965-.238-1.4 1.273-1.05 2.148-2.42 2.148-4zM9.9 17.15l-4.25-4.25 1.41-1.41L9.9 14.33l7.09-7.09 1.41 1.41L9.9 17.15z"/>
           </svg>
         </div>
-        <span class="text-gray-500 text-lg">@chaleeblack</span>
+        <span class="text-gray-500 text-[35px]">@chaleeblack</span>
       </div>
     </div>
 
-    <div class="text-3xl font-medium leading-relaxed tracking-wide text-white">
+    <div class="text-[55px] font-medium leading-snug tracking-wide text-white">
       "{{ quote }}"
     </div>
 
-    <div class="text-gray-500 text-base pt-2">
-      <span>8:00 AM · {{ date }}</span>
+    <div class="text-gray-500 text-[30px] pt-4">
+      <span>{{ timestamp }}</span>
     </div>
 
   </div>

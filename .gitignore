@@ -30,7 +30,9 @@ venv.bak/
 *.swo
 
 # Session Data
+agents/social_agent/state/
 state.json
 history.json
+analytics.json
 output/
 social_agent/output/

@@ -1,50 +1,35 @@
-# Social Agent
+# Chronos (Enterprise AI Agentic System)
 
-An autonomous AI agent designed to generate highly engaging, punchy, and short motivational quotes tailored for forex and gold day traders. The agent automatically renders a beautifully generated high-resolution graphic and posts to X (Twitter), Facebook Pages, and Instagram Business feeds.
+Chronos is a fully modular, enterprise-grade autonomous AI agent system designed to act as a highly authentic social media personality for forex, crypto, and day traders. It completely replaces monolithic scripts with a multi-agent orchestrated pipeline.
+
+## System Architecture
+
+The pipeline is orchestrated by the `SocialAgentCoordinator` which delegates work to specialized sub-agents:
+
+1. **AnalyticsAgent**: Connects to X (via Twikit) to fetch live engagement metrics (Likes, Retweets, Replies, Views). It dynamically tracks which content formats (e.g., relatable memes, sarcasm) are performing best.
+2. **ResearchAgent**: Aggregates real-time market data by parsing live financial RSS feeds (Macro News) and querying X for retail trader sentiment.
+3. **StrategistAgent**: Digests the research and analytics to generate a dynamic strategy. It explicitly selects one of five human **Emotional Filters** (Friendly Mentor, Sarcastic Realist, Grounded Philosopher, Exhausted Trader, Hyped Analyst) based on current market conditions.
+4. **CreatorAgent**: Uses `gemini-3.1-flash-lite` (with API failover) to generate highly conversational, timeless, and relatable content matching the strategist's emotional filter. It outputs a clean quote for the image, a hashtagged post for X, and a full meta caption for Instagram/Facebook.
+5. **PublisherAgent**: Renders a premium high-resolution Canva-style graphic (1080x1350) using Playwright and an HTML/Tailwind template. It securely posts the graphic to X (stealthly bypassing bot detection via cookies) and to Facebook/Instagram via the Meta Graph API.
 
 ## Features
-
-- **Automated Quote Generation:** Uses Google's `gemini-3.1-flash-lite` to generate engaging trader-focused quotes and captions formatted as structured JSON.
-- **Anti-Repeat Logic:** Includes a `history.json` mechanism to ensure the agent never posts the same quote twice.
-- **Stealth X Posting:** Uses `twifork` (Twikit) to securely bypass X's anti-bot detection and login walls via cookie injection.
-- **Meta Integrations:** Automatically publishes to a Facebook Page and Instagram Business account via the Meta Graph API.
-- **High-Res Graphics:** Uses Playwright to render a premium Canva-style 1080x1350 graphic based on an HTML/TailwindCSS template.
+- **Model & Key Failover Rotation**: Robust fallback execution layers across Gemini APIs to handle rate limits and quota exhaustion seamlessly.
+- **Dynamic Humanization**: Strictly avoids AI slang, generating content that feels 100% human and relatable.
+- **Beautiful Terminal Logs**: Fully formatted, color-coded CLI output via custom ANSI loggers and ASCII block summaries.
 
 ## Setup
 
-1. **Clone the repository**
-2. **Install dependencies:** 
+1. **Install dependencies:** 
    ```bash
-   pip install google-genai python-dotenv playwright twifork requests
+   pip install google-genai python-dotenv playwright twikit requests feedparser
    ```
-3. **Playwright setup:** Run `playwright install chromium`
-4. **Environment Variables:** Create a `.env` file with the following:
-   ```env
-   # Gemini
-   GEMINI_API_KEY=your_api_key
-
-   # X / Twitter (Optional, credentials bypass handled by state.json)
-   X_USERNAME=your_username
-   X_PASSWORD=your_password
-
-   # Meta (Facebook & Instagram)
-   FB_PAGE_ID=your_fb_page_id
-   IG_USER_ID=your_ig_user_id
-   META_PAGE_ACCESS_TOKEN=your_meta_access_token
-   ```
-5. **X Cookie Setup:** Export your X session cookies (using a Chrome extension) and save them as a `state.json` file in the `social_agent` folder.
+2. **Playwright setup:** Run `playwright install chromium`
+3. **Environment Variables:** Create a `.env` file with `GEMINI_API_KEY_1`, `GEMINI_API_KEY_2`, `X_USERNAME`, and your Meta Graph credentials (`FB_PAGE_ID`, `IG_USER_ID`, `META_PAGE_ACCESS_TOKEN`).
+4. **Session Cookies:** Place your exported X cookies into `agents/social_agent/state/state.json`.
 
 ## Usage
 
-Run the agent with:
+Run the master orchestrator to start the pipeline:
 ```bash
-python social_agent/agent.py
+python orchestrator/main_chronos.py
 ```
-
-## Security
-
-Sensitive files like `.env`, `state.json`, and `history.json` are excluded via `.gitignore` to prevent credentials from being exposed. Ensure you never commit your session cookies or API keys to a public repository!
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
