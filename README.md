@@ -8,9 +8,9 @@ The pipeline is orchestrated by the `SocialAgentCoordinator` which delegates wor
 
 1. **AnalyticsAgent**: Connects to X (via Twikit) to fetch live engagement metrics (Likes, Retweets, Replies, Views). It dynamically tracks which content formats (e.g., relatable memes, sarcasm) are performing best.
 2. **ResearchAgent**: Aggregates real-time market data by parsing live financial RSS feeds (Macro News) and querying X for retail trader sentiment.
-3. **StrategistAgent**: Digests the research and analytics to generate a dynamic strategy. It explicitly selects one of five human **Emotional Filters** (Friendly Mentor, Sarcastic Realist, Grounded Philosopher, Exhausted Trader, Hyped Analyst) based on current market conditions.
-4. **CreatorAgent**: Uses `gemini-3.1-flash-lite` (with API failover) to generate highly conversational, timeless, and relatable content matching the strategist's emotional filter. It outputs a clean quote for the image, a hashtagged post for X, and a full meta caption for Instagram/Facebook.
-5. **PublisherAgent**: Renders a premium high-resolution Canva-style graphic (1080x1350) using Playwright and an HTML/Tailwind template. It securely posts the graphic to X (stealthly bypassing bot detection via cookies) and to Facebook/Instagram via the Meta Graph API.
+3. **StrategistAgent (JSON Brain)**: Digests the research and analytics to generate a dynamic strategy. It explicitly selects one of five human **Emotional Filters** (Friendly Mentor, Sarcastic Realist, Grounded Philosopher, Exhausted Trader, Hyped Analyst) based on current market conditions.
+4. **CreatorAgent**: Uses Gemini API (with key rotation and failover) to generate highly conversational, timeless, and relatable content matching the strategist's emotional filter. It outputs a clean quote for the image, a hashtagged post for X, and a full meta caption for Instagram/Facebook.
+5. **PublisherAgent (Stealth Posting)**: Renders a premium high-resolution Canva-style graphic (1080x1350) using Playwright and an HTML/Tailwind template. It securely posts the graphic to X (stealthily bypassing bot detection via Twikit) and performs **Complete Meta Integration** to publish directly to Facebook and Instagram via the Meta Graph API.
 
 ## Features
 - **Model & Key Failover Rotation**: Robust fallback execution layers across Gemini APIs to handle rate limits and quota exhaustion seamlessly.

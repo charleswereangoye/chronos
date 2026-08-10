@@ -36,3 +36,18 @@ history.json
 analytics.json
 output/
 social_agent/output/
+
+# Security and Credentials (Preventing Vulnerabilities)
+*.pem
+*.key
+*.cert
+*.crt
+*.p12
+*.sqlite3
+*.db
+secrets.json
+credentials.json
+client_secret.json
+cookies.json
+oauth*.json
+auth.json
