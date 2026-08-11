@@ -1,6 +1,7 @@
 import json
 from shared.config import get_gemini_client_and_model
 from shared.logger import get_logger
+from shared.memory import MemoryManager
 
 logger = get_logger("StrategistAgent")
 
@@ -23,7 +24,7 @@ def generate_content_with_failover(prompt_text):
 
 class StrategistAgent:
     def __init__(self):
-        pass
+        self.memory = MemoryManager()
         
     def generate_persona(self, research_data: dict, analytics_data: dict) -> dict:
         logger.info("Generating dynamic persona based on research and analytics...")
@@ -31,6 +32,9 @@ class StrategistAgent:
         # Sort formats by score to determine weights
         format_scores = analytics_data.get('format_scores', {})
         best_format = analytics_data.get('best_performing_format', 'RELATABLE_MEME_TEXT')
+        
+        history = self.memory.load_history()
+        last_filter = history.get("last_emotional_filter", "None")
         
         prompt = f"""
         Analyze today's market climate based on the following research:
@@ -47,6 +51,10 @@ class StrategistAgent:
         3. GROUNDED_PHILOSOPHER: Serious, deep, psychological, focused on discipline.
         4. EXHAUSTED_TRADER: Casual, tired, relatable, commenting on choppy or dead markets.
         5. HYPED_ANALYST: Energetic, focused on clean setups and momentum.
+        
+        CRITICAL VARIETY INSTRUCTION:
+        The previously used emotional filter was: {last_filter}. 
+        Unless the market climate strictly demands repeating the exact same filter, you MUST select a DIFFERENT emotional filter to maintain audience engagement. Do not fall into a loop of repeating the same filter.
         
         Also explicitly select a 'post_format' from the following:
         - RELATABLE_MEME_TEXT

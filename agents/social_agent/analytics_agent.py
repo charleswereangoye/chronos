@@ -23,7 +23,12 @@ class AnalyticsAgent:
                 "RELATABLE_MEME_TEXT": 85,
                 "SARCASM_HOT_TAKE": 70,
                 "ENGAGEMENT_QUESTION": 90,
-                "RAW_FRIEND_ADVICE": 60
+                "RAW_FRIEND_ADVICE": 60,
+                "EXHAUSTED_TRADER": 50,
+                "FRIENDLY_MENTOR": 50,
+                "GROUNDED_PHILOSOPHER": 50,
+                "HYPED_ANALYST": 50,
+                "SARCASTIC_REALIST": 50
             }
         }
         
@@ -34,6 +39,7 @@ class AnalyticsAgent:
         except Exception as e:
             logger.warning(f"Could not read analytics.json, using defaults: {e}")
             
+        current_engagement = 0
         try:
             twikit_client = Client('en-US')
             with open(STATE_FILE_PATH, "r", encoding="utf-8") as f:
@@ -50,9 +56,32 @@ class AnalyticsAgent:
                     replies = sum([int(getattr(t, 'reply_count', 0) or 0) for t in tweets])
                     views = sum([int(getattr(t, 'view_count', 0) or 0) for t in tweets])
                     logger.info(f"Recent X engagement - Likes: {likes}, RTs: {retweets}, Replies: {replies}, Views: {views}")
-                    analytics_data["avg_engagement_rate"] = round((likes + retweets + replies) / len(tweets), 2)
+                    
+                    current_engagement = round((likes + retweets * 2 + replies * 3) / len(tweets), 2)
+                    analytics_data["avg_engagement_rate"] = current_engagement
         except Exception as e:
             logger.error(f"Failed to fetch live analytics via Twikit: {e}")
+            
+        # A/B Testing Logic: Update scores based on the last used filter
+        try:
+            from shared.memory import MemoryManager
+            mem = MemoryManager()
+            history = mem.load_history()
+            last_filter = history.get("last_emotional_filter", "None")
+            
+            if last_filter and last_filter in analytics_data["format_scores"]:
+                # If current engagement is good (> 10), reward the filter. Otherwise penalize slightly.
+                if current_engagement > 10:
+                    analytics_data["format_scores"][last_filter] += 2
+                else:
+                    analytics_data["format_scores"][last_filter] = max(10, analytics_data["format_scores"][last_filter] - 1)
+                    
+                # Find new best performing format
+                best_format = max(analytics_data["format_scores"], key=analytics_data["format_scores"].get)
+                analytics_data["best_performing_format"] = best_format
+                logger.info(f"Updated A/B scores. Best format is now: {best_format}")
+        except Exception as e:
+            logger.error(f"Failed to run A/B testing logic: {e}")
             
         try:
             os.makedirs(os.path.dirname(self.analytics_file), exist_ok=True)
