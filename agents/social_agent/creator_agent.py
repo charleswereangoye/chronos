@@ -1,4 +1,5 @@
 import json
+import datetime
 from shared.config import get_gemini_client_and_model
 from shared.logger import get_logger
 from shared.memory import MemoryManager
@@ -26,7 +27,7 @@ class CreatorAgent:
     def __init__(self):
         self.memory = MemoryManager()
         
-    def generate_unique_quote(self, persona_profile: dict) -> dict:
+    def generate_unique_quote(self, persona_profile: dict, critic_feedback: str = None) -> dict:
         emotional_filter = persona_profile.get('emotional_filter', 'GROUNDED_PHILOSOPHER')
         logger.info(f"Creating content based on dynamic emotional filter: {emotional_filter}")
         history = self.memory.load_history()
@@ -34,6 +35,12 @@ class CreatorAgent:
         last_caption_start = history.get("last_caption_start", "None")
         
         post_format = persona_profile.get('post_format', 'RELATABLE_MEME_TEXT')
+        current_time_str = datetime.datetime.now().strftime("%A, %I:%M %p")
+
+        feedback_section = ""
+        if critic_feedback:
+            feedback_section = f"\nCRITICAL FEEDBACK FROM PREVIOUS ATTEMPT: {critic_feedback}\nYou MUST fix these issues in your new generation.\n"
+
         prompt = f"""
         You are a highly authentic human trader posting on social media.
         Apply the following EMOTIONAL FILTER to your delivery style: {emotional_filter}
@@ -48,13 +55,14 @@ class CreatorAgent:
         Theme: {persona_profile.get('core_theme', 'Trading')}
         Angle: {persona_profile.get('narrative_angle', 'Discipline')}
         Selected Post Format: {post_format}
+        {feedback_section}
         
         Generate a JSON object with three keys: 'image_quote', 'x_post_text', and 'meta_caption'. Do not include markdown formatting like ```json.
         
-        CRITICAL STANDARDS (Humanization):
+        CRITICAL STANDARDS (Humanization & Time Awareness):
         - STRICTLY BAN AI SLANG: Do NOT use words like tapestry, landscape, navigate, profound, discipline requires, institutional, realm, embark, pivotal, beacon.
         - ENFORCE NATURAL WRITING: Write in short, conversational sentences like an authentic trader texting on WhatsApp or posting on X. Allow lowercase text, casual phrasing, and trader slang.
-        - DO NOT reference specific real-time market events or specific days of the week. Keep it TIMELESS.
+        - The CURRENT REAL LOCAL TIME is {current_time_str}. If you make ANY reference to the time of day, morning, afternoon, night, or day of the week, it MUST be completely accurate to this exact current time. Do not say "since noon" if it is only 9 AM.
         
         1. 'image_quote': A highly engaging, punchy quote based strictly on the emotional filter. Max 2 sentences. NO emojis and NO hashtags in the quote.
         2. 'x_post_text': The exact text of the 'image_quote', but with 3-4 relevant hashtags added at the end (e.g., "#trading #forex"). This is for Twitter traction.

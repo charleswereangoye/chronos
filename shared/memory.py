@@ -15,12 +15,14 @@ class MemoryManager:
                 with open(self.history_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     if isinstance(data, list):
-                        return {"quotes": data, "last_caption_start": "None"}
+                        return {"quotes": data, "last_caption_start": "None", "last_emotional_filter": "None"}
+                    if "last_emotional_filter" not in data:
+                        data["last_emotional_filter"] = "None"
                     return data
             except json.JSONDecodeError:
                 logger.warning("history.json decode error, returning default.")
         
-        return {"quotes": [], "last_caption_start": "None"}
+        return {"quotes": [], "last_caption_start": "None", "last_emotional_filter": "None"}
 
     def save_history(self, history_data: dict):
         if "quotes" in history_data:
@@ -31,12 +33,13 @@ class MemoryManager:
             json.dump(history_data, f, indent=4)
         logger.info("History saved successfully.")
 
-    def save_post(self, quote: str, caption: str):
+    def save_post(self, quote: str, caption: str, emotional_filter: str = "None"):
         history_data = self.load_history()
         history_data["quotes"].append(quote)
         
         words = caption.split()
         new_start = " ".join(words[:4]) if len(words) >= 4 else caption
         history_data["last_caption_start"] = new_start
+        history_data["last_emotional_filter"] = emotional_filter
         
         self.save_history(history_data)
