@@ -1,3 +1,4 @@
+import os
 from shared.logger import get_logger
 from shared.config import DRY_RUN
 from shared.memory import MemoryManager
@@ -94,6 +95,11 @@ class SocialAgentCoordinator:
         # Step 7: Memory Log
         self.memory.save_post(quote, caption, persona_profile.get("emotional_filter", "None"))
         logger.info("Social Agent Pipeline Complete.")
+        return {
+            "image_path": image_path,
+            "x_post_text": x_post_text,
+            "meta_caption": caption
+        }
 
     async def run_news(self):
         logger.info("Starting Social News Alert Pipeline...")
@@ -124,10 +130,15 @@ class SocialAgentCoordinator:
             logger.info("DRY_RUN IS ON: Output validated. Network posting bypassed.")
         else:
             logger.info("DRY_RUN IS OFF: Executing network posts...")
-            await self.publisher.post_to_x_stealth(caption, image_path=image_path)
+            await self.publisher.post_to_x_stealth(x_post_text, image_path=image_path)
             self.publisher.post_to_meta(caption=caption, image_path=image_path)
             
         logger.info("Social News Pipeline Complete.")
+        return {
+            "image_path": image_path,
+            "x_post_text": x_post_text,
+            "meta_caption": caption
+        }
 
     async def run_serious(self):
         logger.info("Starting Serious Trading Advice Pipeline...")
@@ -163,3 +174,78 @@ class SocialAgentCoordinator:
             self.publisher.post_to_meta(caption=caption, image_path=image_path)
             
         logger.info("Serious Advice Pipeline Complete.")
+        return {
+            "image_path": image_path,
+            "x_post_text": x_post_text,
+            "meta_caption": caption
+        }
+
+    async def run_manual(self):
+        logger.info("Starting Manual Post Pipeline...")
+        print("\n--- Manual Custom Post ---")
+        print("1. Text Quote Only (renders standard quote image)")
+        print("2. Photo + Caption (posts photo to X and Meta, uses image template for Meta)")
+        post_type = input("Choose option (1-2): ").strip()
+        
+        if post_type == "1":
+            quote = input("\nEnter the wording for the quote (this goes on the image and X): ").strip()
+            if not quote:
+                print("Quote cannot be empty. Aborting.")
+                return
+                
+            caption = input("Enter the caption (for Instagram and Facebook): ").strip()
+            
+            image_path = await self.publisher.render_tweet_image(quote, filename="manual_quote.png")
+            
+            print("\n" + "="*80)
+            print("\033[1;96m" + " FINAL MANUAL CONTENT GENERATED ".center(80, "=") + "\033[0m")
+            print("="*80)
+            print(f"\033[1;93m[IMAGE QUOTE & X POST]:\033[0m\n{quote}\n")
+            print(f"\033[1;92m[META CAPTION]:\033[0m\n{caption}\n")
+            print(f"\033[1;95m[ASSET LOCATION]:\033[0m\n{image_path}")
+            print("="*80 + "\n")
+            
+            if DRY_RUN:
+                logger.info("DRY_RUN IS ON: Output validated. Network posting bypassed.")
+            else:
+                logger.info("DRY_RUN IS OFF: Executing network posts...")
+                await self.publisher.post_to_x_stealth(quote)
+                self.publisher.post_to_meta(caption=caption, image_path=image_path)
+                
+        elif post_type == "2":
+            quote = input("\nEnter the text/caption for this post (goes on X and Meta): ").strip()
+            photo_path = input("Enter the absolute file path to the photo (e.g. /home/user/chart.png): ").strip()
+            
+            if not os.path.exists(photo_path):
+                print(f"Error: Could not find file at {photo_path}. Aborting.")
+                return
+            
+            # Render the Meta-friendly template containing the image
+            rendered_image_path = await self.publisher.render_tweet_with_custom_photo(
+                quote_text=quote, 
+                custom_photo_path=photo_path,
+                filename="manual_photo_quote.png"
+            )
+            
+            print("\n" + "="*80)
+            print("\033[1;96m" + " FINAL MANUAL PHOTO POST GENERATED ".center(80, "=") + "\033[0m")
+            print("="*80)
+            print(f"\033[1;93m[CAPTION]:\033[0m\n{quote}\n")
+            print(f"\033[1;94m[ORIGINAL PHOTO]:\033[0m\n{photo_path}\n")
+            print(f"\033[1;95m[RENDERED META ASSET]:\033[0m\n{rendered_image_path}")
+            print("="*80 + "\n")
+            
+            if DRY_RUN:
+                logger.info("DRY_RUN IS ON: Output validated. Network posting bypassed.")
+            else:
+                logger.info("DRY_RUN IS OFF: Executing network posts...")
+                # Post the raw photo and text to X
+                await self.publisher.post_to_x_stealth(quote, image_path=photo_path)
+                # Post the rendered template with photo to Meta
+                self.publisher.post_to_meta(caption=quote, image_path=rendered_image_path)
+        else:
+            print("Invalid choice. Aborting manual post.")
+            return
+            
+        logger.info("Manual Post Pipeline Complete.")
+
