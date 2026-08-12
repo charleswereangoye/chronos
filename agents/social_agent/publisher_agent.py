@@ -52,6 +52,47 @@ class PublisherAgent:
             
         return str(output_image_path)
 
+    async def render_tweet_with_custom_photo(self, quote_text: str, custom_photo_path: str, filename: str = "manual_photo_quote.png") -> str:
+        logger.info(f"Rendering high-resolution custom photo asset to {filename}...")
+        template_path = TEMPLATES_DIR / "tweet_image_template.html"
+        output_image_path = OUTPUT_DIR / filename
+        
+        os.makedirs(OUTPUT_DIR, exist_ok=True)
+        
+        with open(template_path, "r", encoding="utf-8") as f:
+            html_content = f.read()
+            
+        raw_time = datetime.now().strftime("%I:%M %p · %b %d, %Y")
+        current_time = raw_time.lstrip("0").replace(" 0", " ")
+        
+        # Absolute path for local image rendering in playwright
+        abs_photo_path = f"file://{os.path.abspath(custom_photo_path)}"
+        
+        rendered_html = html_content.replace("{{ quote }}", quote_text)
+        rendered_html = rendered_html.replace("{{ image_src }}", abs_photo_path)
+        rendered_html = rendered_html.replace("{{ timestamp }}", current_time)
+        
+        temp_html_path = TEMPLATES_DIR / "temp_custom_photo_render.html"
+        with open(temp_html_path, "w", encoding="utf-8") as f:
+            f.write(rendered_html)
+            
+        async with async_playwright() as p:
+            browser = await p.chromium.launch()
+            page = await browser.new_page(viewport={"width": 1080, "height": 1350})
+            await page.goto(f"file://{os.path.abspath(temp_html_path)}")
+            # Optional: wait for image to load
+            try:
+                await page.wait_for_selector("img", state="attached", timeout=3000)
+            except:
+                pass
+            await page.screenshot(path=str(output_image_path))
+            await browser.close()
+            
+        if os.path.exists(temp_html_path):
+            os.remove(temp_html_path)
+            
+        return str(output_image_path)
+
     async def render_news_image(self, news_content: str) -> str:
         logger.info("Rendering high-resolution news asset...")
         template_path = TEMPLATES_DIR / "news_template.html"

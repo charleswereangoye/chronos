@@ -1,0 +1,309 @@
+import asyncio
+import os
+import sys
+import logging
+from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters, ContextTypes, ConversationHandler
+
+# Ensure the root chronos directory is in the path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from shared.config import TELEGRAM_BOT_TOKEN
+from agents.social_agent.social_coordinator import SocialAgentCoordinator
+
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+
+coordinator = SocialAgentCoordinator()
+
+# Define conversation states
+MAIN_MENU = 1
+SOCIAL_MENU = 2
+MANUAL_TYPE = 3
+TEXT_QUOTE = 4
+TEXT_CAPTION = 5
+PHOTO_FILE = 6
+PHOTO_CAPTION = 7
+
+# Keyboards
+main_menu_keyboard = [
+    ["1. 🌐 Social Agent"],
+    ["2. 💼 Job Seeking Agent"],
+    ["3. 💱 Forex Agent"],
+    ["4. 📅 Daily Updates Agent"],
+    ["0. ❌ Exit"]
+]
+
+social_menu_keyboard = [
+    ["1. 🚨 Update people about red folder news"],
+    ["2. 📉 Post a serious trading advice"],
+    ["3. 🎭 Post a persona-based quote"],
+    ["4. ⚡ Check for breaking news"],
+    ["5. 🚀 Run all standard pipelines"],
+    ["6. ✍️ Create a custom manual post"],
+    ["0. 🔙 Back to Main Menu"]
+]
+
+manual_type_keyboard = [
+    ["1. 📝 Text Quote Only"],
+    ["2. 📸 Photo + Caption"],
+    ["0. 🚫 Cancel"]
+]
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    reply_markup = ReplyKeyboardMarkup(main_menu_keyboard, resize_keyboard=True, one_time_keyboard=False)
+    await update.message.reply_text(
+        "=== Welcome to Chronos Master Orchestrator ===\nWhich agent do you want to use?",
+        reply_markup=reply_markup
+    )
+    return MAIN_MENU
+
+async def main_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text
+    
+    if text.startswith("0"):
+        await update.message.reply_text("Exiting Chronos Master Orchestrator. Goodbye!", reply_markup=ReplyKeyboardRemove())
+        return ConversationHandler.END
+    elif text.startswith("1"):
+        reply_markup = ReplyKeyboardMarkup(social_menu_keyboard, resize_keyboard=True, one_time_keyboard=False)
+        await update.message.reply_text(
+            "--- Social Agent Menu ---\nWhat do you want to do for today?",
+            reply_markup=reply_markup
+        )
+        return SOCIAL_MENU
+    elif text.startswith("2") or text.startswith("3") or text.startswith("4"):
+        await update.message.reply_text("This agent is still in production.\nChoose another agent or exit.")
+        return MAIN_MENU
+    else:
+        await update.message.reply_text("Invalid choice. Please choose from the keyboard.")
+        return MAIN_MENU
+
+async def social_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text
+    
+    if text.startswith("0"):
+        reply_markup = ReplyKeyboardMarkup(main_menu_keyboard, resize_keyboard=True, one_time_keyboard=False)
+        await update.message.reply_text("=== Welcome to Chronos Master Orchestrator ===\nWhich agent do you want to use?", reply_markup=reply_markup)
+        return MAIN_MENU
+        
+    elif text.startswith("1"):
+        await update.message.reply_text("⏳ Running News Pipeline. This might take a minute...", reply_markup=ReplyKeyboardRemove())
+        try:
+            result = await coordinator.run_news()
+            if result:
+                msg = f"✅ *News Pipeline Complete!*\n\n*X Post:*\n{result.get('x_post_text', '')}\n\n*Meta Caption:*\n{result.get('meta_caption', '')}"
+                with open(result.get("image_path"), 'rb') as photo:
+                    await update.message.reply_photo(photo=photo, caption=msg, parse_mode="Markdown")
+            else:
+                await update.message.reply_text("✅ News Pipeline Complete!")
+        except Exception as e:
+            await update.message.reply_text(f"❌ Error: {e}")
+            
+    elif text.startswith("2"):
+        await update.message.reply_text("⏳ Running Serious Advice Pipeline...", reply_markup=ReplyKeyboardRemove())
+        try:
+            result = await coordinator.run_serious()
+            if result:
+                msg = f"✅ *Serious Advice Pipeline Complete!*\n\n*X Post:*\n{result.get('x_post_text', '')}\n\n*Meta Caption:*\n{result.get('meta_caption', '')}"
+                with open(result.get("image_path"), 'rb') as photo:
+                    await update.message.reply_photo(photo=photo, caption=msg, parse_mode="Markdown")
+            else:
+                await update.message.reply_text("✅ Serious Advice Pipeline Complete!")
+        except Exception as e:
+            await update.message.reply_text(f"❌ Error: {e}")
+            
+    elif text.startswith("3"):
+        await update.message.reply_text("⏳ Running Persona Quote Pipeline...", reply_markup=ReplyKeyboardRemove())
+        try:
+            result = await coordinator.run()
+            if result:
+                msg = f"✅ *Persona Quote Pipeline Complete!*\n\n*X Post:*\n{result.get('x_post_text', '')}\n\n*Meta Caption:*\n{result.get('meta_caption', '')}"
+                with open(result.get("image_path"), 'rb') as photo:
+                    await update.message.reply_photo(photo=photo, caption=msg, parse_mode="Markdown")
+            else:
+                await update.message.reply_text("✅ Persona Quote Pipeline Complete!")
+        except Exception as e:
+            await update.message.reply_text(f"❌ Error: {e}")
+            
+    elif text.startswith("4"):
+        await update.message.reply_text("⏳ Checking for breaking news...", reply_markup=ReplyKeyboardRemove())
+        try:
+            result = await coordinator.run(check_events=True)
+            if result:
+                msg = f"🚨 *BREAKING NEWS POSTED!*\n\n*X Post:*\n{result.get('x_post_text', '')}\n\n*Meta Caption:*\n{result.get('meta_caption', '')}"
+                with open(result.get("image_path"), 'rb') as photo:
+                    await update.message.reply_photo(photo=photo, caption=msg, parse_mode="Markdown")
+            else:
+                await update.message.reply_text("ℹ️ No breaking news found.")
+        except Exception as e:
+            await update.message.reply_text(f"❌ Error: {e}")
+            
+    elif text.startswith("5"):
+        await update.message.reply_text("⏳ Running all standard pipelines...", reply_markup=ReplyKeyboardRemove())
+        try:
+            res_news = await coordinator.run_news()
+            res_serious = await coordinator.run_serious()
+            res_persona = await coordinator.run()
+            
+            if res_news:
+                msg = f"✅ *News Pipeline Complete!*\n\n*X Post:*\n{res_news.get('x_post_text', '')}"
+                with open(res_news.get("image_path"), 'rb') as photo:
+                    await update.message.reply_photo(photo=photo, caption=msg, parse_mode="Markdown")
+            
+            if res_serious:
+                msg = f"✅ *Serious Advice Complete!*\n\n*X Post:*\n{res_serious.get('x_post_text', '')}"
+                with open(res_serious.get("image_path"), 'rb') as photo:
+                    await update.message.reply_photo(photo=photo, caption=msg, parse_mode="Markdown")
+                    
+            if res_persona:
+                msg = f"✅ *Persona Quote Complete!*\n\n*X Post:*\n{res_persona.get('x_post_text', '')}"
+                with open(res_persona.get("image_path"), 'rb') as photo:
+                    await update.message.reply_photo(photo=photo, caption=msg, parse_mode="Markdown")
+                    
+            await update.message.reply_text("✅ All Pipelines Complete!")
+        except Exception as e:
+            await update.message.reply_text(f"❌ Error: {e}")
+            
+    elif text.startswith("6"):
+        reply_markup = ReplyKeyboardMarkup(manual_type_keyboard, resize_keyboard=True, one_time_keyboard=True)
+        await update.message.reply_text("--- Manual Custom Post ---\nChoose post type:", reply_markup=reply_markup)
+        return MANUAL_TYPE
+        
+    else:
+        await update.message.reply_text("Invalid choice. Please choose from the keyboard.")
+        return SOCIAL_MENU
+
+    # After a successful task (not 0 or 6), go back to Social Menu
+    reply_markup = ReplyKeyboardMarkup(social_menu_keyboard, resize_keyboard=True, one_time_keyboard=False)
+    await update.message.reply_text("--- Social Agent Menu ---\nWhat do you want to do next?", reply_markup=reply_markup)
+    return SOCIAL_MENU
+
+async def manual_type_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text
+    if text.startswith("0"):
+        reply_markup = ReplyKeyboardMarkup(social_menu_keyboard, resize_keyboard=True, one_time_keyboard=False)
+        await update.message.reply_text("Canceled. Back to Social Agent Menu.", reply_markup=reply_markup)
+        return SOCIAL_MENU
+    elif text.startswith("1"):
+        await update.message.reply_text("✏️ Please send the wording for the quote (this goes on the image and X):", reply_markup=ReplyKeyboardRemove())
+        return TEXT_QUOTE
+    elif text.startswith("2"):
+        await update.message.reply_text("📸 Please send the photo you want to post (Make sure to send it as a Photo, not as a File).", reply_markup=ReplyKeyboardRemove())
+        return PHOTO_FILE
+    else:
+        await update.message.reply_text("Invalid choice.")
+        return MANUAL_TYPE
+
+# --- MANUAL TEXT LOGIC ---
+async def receive_text_quote(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data['quote'] = update.message.text
+    await update.message.reply_text("📝 Great! Now send the caption for Instagram and Facebook:")
+    return TEXT_CAPTION
+
+async def complete_manual_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    caption = update.message.text
+    quote = context.user_data['quote']
+    
+    await update.message.reply_text("⏳ Rendering image and posting...")
+    try:
+        image_path = await coordinator.publisher.render_tweet_image(quote, filename="manual_quote.png")
+        await coordinator.publisher.post_to_x_stealth(quote)
+        coordinator.publisher.post_to_meta(caption=caption, image_path=image_path)
+        
+        msg = f"✅ *Manual Text Post Complete!*\n\n*X Post:*\n{quote}\n\n*Meta Caption:*\n{caption}"
+        with open(image_path, 'rb') as photo:
+            await update.message.reply_photo(photo=photo, caption=msg, parse_mode="Markdown")
+            
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error: {e}")
+    
+    reply_markup = ReplyKeyboardMarkup(social_menu_keyboard, resize_keyboard=True, one_time_keyboard=False)
+    await update.message.reply_text("--- Social Agent Menu ---\nWhat do you want to do next?", reply_markup=reply_markup)
+    return SOCIAL_MENU
+
+# --- MANUAL PHOTO LOGIC ---
+async def receive_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message.photo:
+        await update.message.reply_text("That doesn't look like a photo. Try again or type /cancel.")
+        return PHOTO_FILE
+    
+    photo_file = await update.message.photo[-1].get_file()
+    download_path = os.path.join(os.path.dirname(__file__), "temp_telegram_photo.jpg")
+    await photo_file.download_to_drive(download_path)
+    context.user_data['photo_path'] = download_path
+    
+    await update.message.reply_text("📝 Photo received! Now send the text/caption for this post (goes on X and Meta):")
+    return PHOTO_CAPTION
+
+async def complete_manual_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    caption = update.message.text
+    photo_path = context.user_data['photo_path']
+    
+    await update.message.reply_text("⏳ Rendering Meta template and posting...")
+    try:
+        rendered_image_path = await coordinator.publisher.render_tweet_with_custom_photo(
+            quote_text=caption, 
+            custom_photo_path=photo_path,
+            filename="manual_photo_quote.png"
+        )
+        await coordinator.publisher.post_to_x_stealth(caption, image_path=photo_path)
+        coordinator.publisher.post_to_meta(caption=caption, image_path=rendered_image_path)
+        
+        msg = f"✅ *Manual Photo Post Complete!*\n\n*X Post & Meta Caption:*\n{caption}"
+        with open(rendered_image_path, 'rb') as photo:
+            await update.message.reply_photo(photo=photo, caption=msg, parse_mode="Markdown")
+            
+        if os.path.exists(photo_path):
+            os.remove(photo_path)
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error: {e}")
+    
+    reply_markup = ReplyKeyboardMarkup(social_menu_keyboard, resize_keyboard=True, one_time_keyboard=False)
+    await update.message.reply_text("--- Social Agent Menu ---\nWhat do you want to do next?", reply_markup=reply_markup)
+    return SOCIAL_MENU
+
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    reply_markup = ReplyKeyboardMarkup(main_menu_keyboard, resize_keyboard=True, one_time_keyboard=False)
+    await update.message.reply_text("🚫 Canceled manual post.", reply_markup=reply_markup)
+    return MAIN_MENU
+
+def main():
+    if not TELEGRAM_BOT_TOKEN:
+        print("TELEGRAM_BOT_TOKEN is not set in .env!")
+        return
+
+    # Set long timeouts so image rendering and posting doesn't time out the bot
+    application = (
+        ApplicationBuilder()
+        .token(TELEGRAM_BOT_TOKEN)
+        .read_timeout(300)
+        .write_timeout(300)
+        .connect_timeout(300)
+        .pool_timeout(300)
+        .build()
+    )
+
+    conv_handler = ConversationHandler(
+        entry_points=[CommandHandler("start", start)],
+        states={
+            MAIN_MENU: [MessageHandler(filters.TEXT & ~filters.COMMAND, main_menu_handler)],
+            SOCIAL_MENU: [MessageHandler(filters.TEXT & ~filters.COMMAND, social_menu_handler)],
+            MANUAL_TYPE: [MessageHandler(filters.TEXT & ~filters.COMMAND, manual_type_handler)],
+            
+            TEXT_QUOTE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_text_quote)],
+            TEXT_CAPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, complete_manual_text)],
+            
+            PHOTO_FILE: [MessageHandler(filters.PHOTO, receive_photo)],
+            PHOTO_CAPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, complete_manual_photo)],
+        },
+        fallbacks=[CommandHandler("cancel", cancel)]
+    )
+
+    application.add_handler(conv_handler)
+    print("🤖 Telegram Orchestrator is running...")
+    application.run_polling()
+
+if __name__ == '__main__':
+    main()
