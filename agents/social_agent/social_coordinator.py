@@ -9,6 +9,8 @@ from agents.social_agent.publisher_agent import PublisherAgent
 from agents.social_agent.critic_agent import CriticAgent
 from agents.social_agent.community_agent import CommunityAgent
 from agents.social_agent.monitor_agent import MonitorAgent
+from agents.social_agent.news_agent import NewsAgent
+from agents.social_agent.serious_agent import SeriousAgent
 
 logger = get_logger("SocialAgentCoordinator")
 
@@ -22,6 +24,8 @@ class SocialAgentCoordinator:
         self.critic = CriticAgent()
         self.community = CommunityAgent()
         self.monitor = MonitorAgent()
+        self.news_agent = NewsAgent()
+        self.serious_agent = SeriousAgent()
         self.memory = MemoryManager()
 
     async def run(self, check_events: bool = False):
@@ -79,6 +83,7 @@ class SocialAgentCoordinator:
             logger.info("DRY_RUN IS ON: Output validated. Network posting bypassed.")
         else:
             logger.info("DRY_RUN IS OFF: Executing network posts...")
+            # For Persona Agent, post text only to X, and image to Meta
             await self.publisher.post_to_x_stealth(x_post_text)
             self.publisher.post_to_meta(caption=caption, image_path=image_path)
             
@@ -89,3 +94,72 @@ class SocialAgentCoordinator:
         # Step 7: Memory Log
         self.memory.save_post(quote, caption, persona_profile.get("emotional_filter", "None"))
         logger.info("Social Agent Pipeline Complete.")
+
+    async def run_news(self):
+        logger.info("Starting Social News Alert Pipeline...")
+        
+        # Step 1: Research
+        research_data = await self.researcher.fetch_daily_research()
+        
+        # Step 2: Content Generation
+        content = self.news_agent.generate_news_post(research_data)
+        
+        news_text = content.get("news_content", "")
+        x_post_text = content.get("x_post_text", news_text)
+        caption = content.get("meta_caption", "")
+        
+        # Step 3: Publishing (Render)
+        image_path = await self.publisher.render_news_image(news_text)
+        
+        print("\n" + "="*80)
+        print("\033[1;96m" + " FINAL NEWS CONTENT GENERATED ".center(80, "=") + "\033[0m")
+        print("="*80)
+        print(f"\033[1;93m[IMAGE NEWS]:\033[0m\n{news_text}\n")
+        print(f"\033[1;94m[X POST TEXT]:\033[0m\n{x_post_text}\n")
+        print(f"\033[1;92m[META CAPTION]:\033[0m\n{caption}\n")
+        print(f"\033[1;95m[ASSET LOCATION]:\033[0m\n{image_path}")
+        print("="*80 + "\n")
+        
+        if DRY_RUN:
+            logger.info("DRY_RUN IS ON: Output validated. Network posting bypassed.")
+        else:
+            logger.info("DRY_RUN IS OFF: Executing network posts...")
+            await self.publisher.post_to_x_stealth(caption, image_path=image_path)
+            self.publisher.post_to_meta(caption=caption, image_path=image_path)
+            
+        logger.info("Social News Pipeline Complete.")
+
+    async def run_serious(self):
+        logger.info("Starting Serious Trading Advice Pipeline...")
+        
+        research_data = await self.researcher.fetch_daily_research()
+        
+        content = self.serious_agent.generate_serious_quote(research_data)
+        quote = content.get("image_quote", "")
+        # Enforce that X post text is identical to the image quote, plus any hashtags returned
+        x_text_from_agent = content.get("x_post_text", "")
+        hashtags = " ".join([word for word in x_text_from_agent.split() if word.startswith("#")])
+        x_post_text = f"{quote} {hashtags}".strip()
+        
+        caption = content.get("meta_caption", "")
+        
+        image_path = await self.publisher.render_tweet_image(quote, filename="serious_quote.png")
+        
+        print("\n" + "="*80)
+        print("\033[1;96m" + " FINAL SERIOUS CONTENT GENERATED ".center(80, "=") + "\033[0m")
+        print("="*80)
+        print(f"\033[1;93m[IMAGE QUOTE]:\033[0m\n{quote}\n")
+        print(f"\033[1;94m[X POST TEXT]:\033[0m\n{x_post_text}\n")
+        print(f"\033[1;92m[META CAPTION]:\033[0m\n{caption}\n")
+        print(f"\033[1;95m[ASSET LOCATION]:\033[0m\n{image_path}")
+        print("="*80 + "\n")
+        
+        if DRY_RUN:
+            logger.info("DRY_RUN IS ON: Output validated. Network posting bypassed.")
+        else:
+            logger.info("DRY_RUN IS OFF: Executing network posts...")
+            # For Serious Agent, post text only to X, and image to Meta
+            await self.publisher.post_to_x_stealth(x_post_text)
+            self.publisher.post_to_meta(caption=caption, image_path=image_path)
+            
+        logger.info("Serious Advice Pipeline Complete.")

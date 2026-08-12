@@ -26,7 +26,7 @@ X_USERNAME = os.getenv("X_USERNAME")
 X_PASSWORD = os.getenv("X_PASSWORD")
 
 # Using string parsing in case DRY_RUN is in .env, otherwise default to True
-DRY_RUN = os.getenv("DRY_RUN", "True").lower() in ("true", "1", "yes")
+DRY_RUN = os.getenv("DRY_RUN", "false").lower() in ("true", "1", "yes")
 
 # Paths
 STATE_DIR = BASE_DIR / "agents" / "social_agent" / "state"

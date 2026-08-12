@@ -15,7 +15,29 @@ async def run_chronos():
     
     try:
         social_coordinator = SocialAgentCoordinator()
-        await social_coordinator.run()
+        print("\nWhat do you want to do for today?")
+        print("1. Update people about red folder news")
+        print("2. Post a serious trading advice (no moods)")
+        print("3. Post a persona-based quote (with moods)")
+        print("4. Check for breaking news (event-driven)")
+        print("5. Run all standard pipelines (News, Serious, Persona)")
+        
+        choice = input("Enter choice (1-5): ").strip()
+        
+        if choice == "1":
+            await social_coordinator.run_news()
+        elif choice == "2":
+            await social_coordinator.run_serious()
+        elif choice == "3":
+            await social_coordinator.run()
+        elif choice == "4":
+            await social_coordinator.run(check_events=True)
+        elif choice == "5":
+            await social_coordinator.run_news()
+            await social_coordinator.run_serious()
+            await social_coordinator.run()
+        else:
+            print("Invalid choice. Exiting.")
     except Exception as e:
         logger.error(f"Chronos workflow failed: {e}")
 
