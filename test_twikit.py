@@ -1,4 +1,4 @@
-import json, asyncio
+import json, asyncio, os
 from twikit import Client
 from shared.config import STATE_FILE_PATH, X_USERNAME
 
@@ -10,13 +10,19 @@ async def test():
     cookies_dict = {c['name']: c['value'] for c in cookies_list}
     client.set_cookies(cookies_dict)
     
+    print("Testing search_tweet...")
+    try:
+        tweets = await client.search_tweet(f"from:{X_USERNAME}", "Latest", count=5)
+        print("search_tweet successful!")
+    except Exception as e:
+        print(f"search_tweet failed: {e}")
+        
+    print("Testing get_user_tweets...")
     try:
         user = await client.get_user_by_screen_name(X_USERNAME)
         tweets = await user.get_tweets("Tweets", count=5)
-        print("Success! Tweets:", len(tweets))
-        likes = sum([int(getattr(t, 'favorite_count', 0) or 0) for t in tweets])
-        print("Likes:", likes)
+        print("get_user_tweets successful!")
     except Exception as e:
-        print(f"Failed: {e}")
+        print(f"get_user_tweets failed: {e}")
 
 asyncio.run(test())

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      background-color: #000000;
+      color: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .red-folder {
+      color: #ff3b30;
+    }
+  </style>
+</head>
+<body class="w-[1080px] h-[1350px] flex items-center justify-center p-12">
+
+  <div id="tweet-card" class="w-full max-w-[900px] flex flex-col justify-center space-y-10">
+    
+    <div class="flex items-center space-y-0 space-x-6">
+      <img src="profile.png" class="w-32 h-32 rounded-full object-cover" alt="Profile">
+      <div>
+        <div class="flex items-center space-x-3">
+          <span class="font-bold text-[45px] text-white">Chalee Black Trades</span>
+          <svg class="w-[35px] h-[35px] text-[#1d9bf0]" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.79-4-4-4-.495 0-.965.084-1.4.238C14.55 2.475 13.18 1.6 11.6 1.6c-1.58 0-2.95.875-3.6 2.148-.435-.154-.905-.238-1.4-.238-2.21 0-4 1.79-4 4 0 .495.084.965.238 1.4C1.475 9.55.6 10.92.6 12.5c0 1.58.875 2.95 2.148 3.6-.154.435-.238.905-.238 1.4 0 2.21 1.79 4 4 4 .495 0 .965-.084 1.4-.238 1.05 1.273 2.42 2.148 4 2.148 1.58 0 2.95-.875 3.6-2.148.435.154.905.238 1.4.238 2.21 0 4-1.79 4-4 0-.495-.084-.965-.238-1.4 1.273-1.05 2.148-2.42 2.148-4zM9.9 17.15l-4.25-4.25 1.41-1.41L9.9 14.33l7.09-7.09 1.41 1.41L9.9 17.15z"/>
+          </svg>
+        </div>
+        <span class="text-gray-500 text-[35px]">@chaleeblack</span>
+      </div>
+    </div>
+
+    <div class="text-[35px] font-bold text-red-500 mb-[-20px]">
+      BREAKING NEWS
+    </div>
+    
+    <div class="text-[45px] font-medium leading-snug tracking-wide text-white bg-[#1a1a1a] p-8 rounded-xl border-l-8 border-red-500 flex items-center space-x-8">
+      <div class="text-red-500">
+        <!-- Red Folder Icon SVG -->
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-20 w-20" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+        </svg>
+      </div>
+      <div class="flex-1">
+        <div class="flex items-center space-x-6">
+          <span class="bg-gray-800 text-gray-300 px-4 py-1 rounded-md text-[30px] font-bold border border-gray-600 shadow-sm">USD</span>
+          <span class="font-bold text-[40px]">{{ news_content }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="text-gray-500 text-[30px] pt-4">
+      <span>{{ timestamp }}</span>
+    </div>
+
+  </div>
+
+</body>
+</html>

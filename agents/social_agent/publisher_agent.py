@@ -19,10 +19,10 @@ class PublisherAgent:
     def __init__(self):
         pass
 
-    async def render_tweet_image(self, quote_text: str) -> str:
-        logger.info("Rendering high-resolution asset...")
+    async def render_tweet_image(self, quote_text: str, filename: str = "daily_quote.png") -> str:
+        logger.info(f"Rendering high-resolution asset to {filename}...")
         template_path = TEMPLATES_DIR / "tweet_template.html"
-        output_image_path = OUTPUT_DIR / "daily_quote.png"
+        output_image_path = OUTPUT_DIR / filename
         
         os.makedirs(OUTPUT_DIR, exist_ok=True)
         
@@ -52,7 +52,39 @@ class PublisherAgent:
             
         return str(output_image_path)
 
-    async def post_to_x_stealth(self, quote_text: str):
+    async def render_news_image(self, news_content: str) -> str:
+        logger.info("Rendering high-resolution news asset...")
+        template_path = TEMPLATES_DIR / "news_template.html"
+        output_image_path = OUTPUT_DIR / "daily_news.png"
+        
+        os.makedirs(OUTPUT_DIR, exist_ok=True)
+        
+        with open(template_path, "r", encoding="utf-8") as f:
+            html_content = f.read()
+            
+        raw_time = datetime.now().strftime("%I:%M %p · %b %d, %Y")
+        current_time = raw_time.lstrip("0").replace(" 0", " ")
+        
+        rendered_html = html_content.replace("{{ news_content }}", news_content)
+        rendered_html = rendered_html.replace("{{ timestamp }}", current_time)
+        
+        temp_html_path = TEMPLATES_DIR / "temp_news_render.html"
+        with open(temp_html_path, "w", encoding="utf-8") as f:
+            f.write(rendered_html)
+            
+        async with async_playwright() as p:
+            browser = await p.chromium.launch()
+            page = await browser.new_page(viewport={"width": 1080, "height": 1350})
+            await page.goto(f"file://{os.path.abspath(temp_html_path)}")
+            await page.screenshot(path=str(output_image_path))
+            await browser.close()
+            
+        if os.path.exists(temp_html_path):
+            os.remove(temp_html_path)
+            
+        return str(output_image_path)
+
+    async def post_to_x_stealth(self, quote_text: str, image_path: str = None):
         logger.info("Preparing to post to X...")
         twikit_client = Client('en-US')
         try:
@@ -63,7 +95,14 @@ class PublisherAgent:
             cookies_dict = {c['name']: c['value'] for c in cookies_list}
             
             twikit_client.set_cookies(cookies_dict)
-            await twikit_client.create_tweet(text=quote_text)
+            
+            media_ids = None
+            if image_path and os.path.exists(image_path):
+                logger.info(f"Uploading media to X: {image_path}")
+                media_id = await twikit_client.upload_media(image_path)
+                media_ids = [media_id]
+                
+            await twikit_client.create_tweet(text=quote_text, media_ids=media_ids)
             logger.info("Agent posted to X.")
         except Exception as e:
             logger.error(f"Failed to post on X: {e}")

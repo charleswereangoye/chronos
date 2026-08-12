@@ -49,7 +49,8 @@ class AnalyticsAgent:
             twikit_client.set_cookies(cookies_dict)
             
             if X_USERNAME:
-                tweets = await twikit_client.search_tweet(f"from:{X_USERNAME}", "Latest", count=5)
+                user = await twikit_client.get_user_by_screen_name(X_USERNAME)
+                tweets = await user.get_tweets("Tweets", count=5)
                 if tweets:
                     likes = sum([int(getattr(t, 'favorite_count', 0) or 0) for t in tweets])
                     retweets = sum([int(getattr(t, 'retweet_count', 0) or 0) for t in tweets])
