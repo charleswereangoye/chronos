@@ -1,6 +1,7 @@
 import json
 import traceback
 from google import genai
+# pyrefly: ignore [missing-import]
 from google.genai import types
 from twikit import Client
 import feedparser
@@ -39,6 +40,8 @@ class ResearchAgent:
         ]
         news_snippets = []
         try:
+            # Spoof User-Agent to prevent 403 Forbidden / Cloudflare blocks on forex sites
+            feedparser.USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             for url in rss_feeds:
                 feed = feedparser.parse(url)
                 for entry in feed.entries[:5]:

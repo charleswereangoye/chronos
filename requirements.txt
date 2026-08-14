@@ -1,0 +1,7 @@
+google-genai
+python-dotenv
+playwright
+twifork
+requests
+feedparser
+python-telegram-bot

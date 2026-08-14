@@ -28,6 +28,7 @@ class SocialAgentCoordinator:
         self.news_agent = NewsAgent()
         self.serious_agent = SeriousAgent()
         self.memory = MemoryManager()
+        self.dry_run = DRY_RUN
 
     async def run(self, check_events: bool = False):
         logger.info("Starting Social Agent Pipeline...")
@@ -80,16 +81,18 @@ class SocialAgentCoordinator:
         print(f"\033[1;95m[ASSET LOCATION]:\033[0m\n{image_path}")
         print("="*80 + "\n")
         
-        if DRY_RUN:
+        x_success = True
+        meta_success = True
+        if self.dry_run:
             logger.info("DRY_RUN IS ON: Output validated. Network posting bypassed.")
         else:
             logger.info("DRY_RUN IS OFF: Executing network posts...")
             # For Persona Agent, post text only to X, and image to Meta
-            await self.publisher.post_to_x_stealth(x_post_text)
-            self.publisher.post_to_meta(caption=caption, image_path=image_path)
+            x_success = await self.publisher.post_to_x_stealth(x_post_text)
+            meta_success = self.publisher.post_to_meta(caption=caption, image_path=image_path)
             
         # Step 6: Community Engagement
-        if not DRY_RUN:
+        if not self.dry_run:
             await self.community.reply_to_mentions(persona_profile)
             
         # Step 7: Memory Log
@@ -98,7 +101,9 @@ class SocialAgentCoordinator:
         return {
             "image_path": image_path,
             "x_post_text": x_post_text,
-            "meta_caption": caption
+            "meta_caption": caption,
+            "x_success": x_success,
+            "meta_success": meta_success
         }
 
     async def run_news(self):
@@ -126,18 +131,22 @@ class SocialAgentCoordinator:
         print(f"\033[1;95m[ASSET LOCATION]:\033[0m\n{image_path}")
         print("="*80 + "\n")
         
-        if DRY_RUN:
+        x_success = True
+        meta_success = True
+        if self.dry_run:
             logger.info("DRY_RUN IS ON: Output validated. Network posting bypassed.")
         else:
             logger.info("DRY_RUN IS OFF: Executing network posts...")
-            await self.publisher.post_to_x_stealth(x_post_text, image_path=image_path)
-            self.publisher.post_to_meta(caption=caption, image_path=image_path)
+            x_success = await self.publisher.post_to_x_stealth(x_post_text, image_path=image_path)
+            meta_success = self.publisher.post_to_meta(caption=caption, image_path=image_path)
             
         logger.info("Social News Pipeline Complete.")
         return {
             "image_path": image_path,
             "x_post_text": x_post_text,
-            "meta_caption": caption
+            "meta_caption": caption,
+            "x_success": x_success,
+            "meta_success": meta_success
         }
 
     async def run_serious(self):
@@ -165,19 +174,23 @@ class SocialAgentCoordinator:
         print(f"\033[1;95m[ASSET LOCATION]:\033[0m\n{image_path}")
         print("="*80 + "\n")
         
-        if DRY_RUN:
+        x_success = True
+        meta_success = True
+        if self.dry_run:
             logger.info("DRY_RUN IS ON: Output validated. Network posting bypassed.")
         else:
             logger.info("DRY_RUN IS OFF: Executing network posts...")
             # For Serious Agent, post text only to X, and image to Meta
-            await self.publisher.post_to_x_stealth(x_post_text)
-            self.publisher.post_to_meta(caption=caption, image_path=image_path)
+            x_success = await self.publisher.post_to_x_stealth(x_post_text)
+            meta_success = self.publisher.post_to_meta(caption=caption, image_path=image_path)
             
         logger.info("Serious Advice Pipeline Complete.")
         return {
             "image_path": image_path,
             "x_post_text": x_post_text,
-            "meta_caption": caption
+            "meta_caption": caption,
+            "x_success": x_success,
+            "meta_success": meta_success
         }
 
     async def run_manual(self):
@@ -205,7 +218,7 @@ class SocialAgentCoordinator:
             print(f"\033[1;95m[ASSET LOCATION]:\033[0m\n{image_path}")
             print("="*80 + "\n")
             
-            if DRY_RUN:
+            if self.dry_run:
                 logger.info("DRY_RUN IS ON: Output validated. Network posting bypassed.")
             else:
                 logger.info("DRY_RUN IS OFF: Executing network posts...")
@@ -235,7 +248,7 @@ class SocialAgentCoordinator:
             print(f"\033[1;95m[RENDERED META ASSET]:\033[0m\n{rendered_image_path}")
             print("="*80 + "\n")
             
-            if DRY_RUN:
+            if self.dry_run:
                 logger.info("DRY_RUN IS ON: Output validated. Network posting bypassed.")
             else:
                 logger.info("DRY_RUN IS OFF: Executing network posts...")
