@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  chronos_bot:
+    image: localhost/chronos_chronos_bot:latest
+    container_name: chronos_telegram_bot
+    restart: unless-stopped
+    command: ["./entrypoint.sh"]
+    env_file:
+      - .env
+    volumes:
+      # Mount the state directory so your X cookies and history persist between container restarts!
+      - ./agents/social_agent/state:/app/agents/social_agent/state
+      - ./entrypoint.sh:/app/entrypoint.sh
+      # Mount timezone files to sync container time with host laptop time
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro

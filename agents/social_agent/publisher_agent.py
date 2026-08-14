@@ -125,7 +125,7 @@ class PublisherAgent:
             
         return str(output_image_path)
 
-    async def post_to_x_stealth(self, quote_text: str, image_path: str = None):
+    async def post_to_x_stealth(self, quote_text: str, image_path: str = None) -> bool:
         logger.info("Preparing to post to X...")
         twikit_client = Client('en-US')
         try:
@@ -145,9 +145,11 @@ class PublisherAgent:
                 
             await twikit_client.create_tweet(text=quote_text, media_ids=media_ids)
             logger.info("Agent posted to X.")
+            return True
         except Exception as e:
             logger.error(f"Failed to post on X: {e}")
             traceback.print_exc()
+            return False
 
     def post_to_meta(self, caption: str, image_path: str):
         if not all([FB_PAGE_ID, IG_USER_ID, META_PAGE_ACCESS_TOKEN]):
