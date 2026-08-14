@@ -26,7 +26,6 @@ TEXT_QUOTE = 4
 TEXT_CAPTION = 5
 PHOTO_FILE = 6
 PHOTO_CAPTION = 7
-SETTINGS_MENU = 8
 
 # Keyboards
 main_menu_keyboard = [
@@ -34,16 +33,8 @@ main_menu_keyboard = [
     ["2. 💼 Job Seeking Agent"],
     ["3. 💱 Forex Agent"],
     ["4. 📅 Daily Updates Agent"],
-    ["5. ⚙️ Settings"],
     ["0. ❌ Exit"]
 ]
-
-def get_settings_keyboard():
-    status = "ON" if coordinator.dry_run else "OFF"
-    return [
-        [f"1. Toggle Dry Run (Currently: {status})"],
-        ["0. 🔙 Back to Main Menu"]
-    ]
 
 social_menu_keyboard = [
     ["1. 🚨 Update people about red folder news"],
@@ -85,10 +76,6 @@ async def main_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif text.startswith("2") or text.startswith("3") or text.startswith("4"):
         await update.message.reply_text("This agent is still in production.\nChoose another agent or exit.")
         return MAIN_MENU
-    elif text.startswith("5"):
-        reply_markup = ReplyKeyboardMarkup(get_settings_keyboard(), resize_keyboard=True, one_time_keyboard=False)
-        await update.message.reply_text("--- Settings Menu ---", reply_markup=reply_markup)
-        return SETTINGS_MENU
     else:
         await update.message.reply_text("Invalid choice. Please choose from the keyboard.")
         return MAIN_MENU
@@ -106,9 +93,7 @@ async def social_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         try:
             result = await coordinator.run_news()
             if result:
-                x_icon = "✅" if result.get('x_success', True) else "❌ FAILED"
-                m_icon = "✅" if result.get('meta_success', True) else "❌ FAILED"
-                msg = f"✅ *News Pipeline Complete!*\n\n*X Post ({x_icon}):*\n{result.get('x_post_text', '')}\n\n*Meta Caption ({m_icon}):*\n{result.get('meta_caption', '')}"
+                msg = f"✅ *News Pipeline Complete!*\n\n*X Post:*\n{result.get('x_post_text', '')}\n\n*Meta Caption:*\n{result.get('meta_caption', '')}"
                 with open(result.get("image_path"), 'rb') as photo:
                     await update.message.reply_photo(photo=photo, caption=msg, parse_mode="Markdown")
             else:
@@ -121,9 +106,7 @@ async def social_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         try:
             result = await coordinator.run_serious()
             if result:
-                x_icon = "✅" if result.get('x_success', True) else "❌ FAILED"
-                m_icon = "✅" if result.get('meta_success', True) else "❌ FAILED"
-                msg = f"✅ *Serious Advice Pipeline Complete!*\n\n*X Post ({x_icon}):*\n{result.get('x_post_text', '')}\n\n*Meta Caption ({m_icon}):*\n{result.get('meta_caption', '')}"
+                msg = f"✅ *Serious Advice Pipeline Complete!*\n\n*X Post:*\n{result.get('x_post_text', '')}\n\n*Meta Caption:*\n{result.get('meta_caption', '')}"
                 with open(result.get("image_path"), 'rb') as photo:
                     await update.message.reply_photo(photo=photo, caption=msg, parse_mode="Markdown")
             else:
@@ -136,9 +119,7 @@ async def social_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         try:
             result = await coordinator.run()
             if result:
-                x_icon = "✅" if result.get('x_success', True) else "❌ FAILED"
-                m_icon = "✅" if result.get('meta_success', True) else "❌ FAILED"
-                msg = f"✅ *Persona Quote Pipeline Complete!*\n\n*X Post ({x_icon}):*\n{result.get('x_post_text', '')}\n\n*Meta Caption ({m_icon}):*\n{result.get('meta_caption', '')}"
+                msg = f"✅ *Persona Quote Pipeline Complete!*\n\n*X Post:*\n{result.get('x_post_text', '')}\n\n*Meta Caption:*\n{result.get('meta_caption', '')}"
                 with open(result.get("image_path"), 'rb') as photo:
                     await update.message.reply_photo(photo=photo, caption=msg, parse_mode="Markdown")
             else:
@@ -151,9 +132,7 @@ async def social_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         try:
             result = await coordinator.run(check_events=True)
             if result:
-                x_icon = "✅" if result.get('x_success', True) else "❌ FAILED"
-                m_icon = "✅" if result.get('meta_success', True) else "❌ FAILED"
-                msg = f"🚨 *BREAKING NEWS POSTED!*\n\n*X Post ({x_icon}):*\n{result.get('x_post_text', '')}\n\n*Meta Caption ({m_icon}):*\n{result.get('meta_caption', '')}"
+                msg = f"🚨 *BREAKING NEWS POSTED!*\n\n*X Post:*\n{result.get('x_post_text', '')}\n\n*Meta Caption:*\n{result.get('meta_caption', '')}"
                 with open(result.get("image_path"), 'rb') as photo:
                     await update.message.reply_photo(photo=photo, caption=msg, parse_mode="Markdown")
             else:
@@ -169,23 +148,17 @@ async def social_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
             res_persona = await coordinator.run()
             
             if res_news:
-                x_icon = "✅" if res_news.get('x_success', True) else "❌ FAILED"
-                m_icon = "✅" if res_news.get('meta_success', True) else "❌ FAILED"
-                msg = f"✅ *News Pipeline Complete!*\n\n*X Post ({x_icon}):*\n{res_news.get('x_post_text', '')}"
+                msg = f"✅ *News Pipeline Complete!*\n\n*X Post:*\n{res_news.get('x_post_text', '')}"
                 with open(res_news.get("image_path"), 'rb') as photo:
                     await update.message.reply_photo(photo=photo, caption=msg, parse_mode="Markdown")
             
             if res_serious:
-                x_icon = "✅" if res_serious.get('x_success', True) else "❌ FAILED"
-                m_icon = "✅" if res_serious.get('meta_success', True) else "❌ FAILED"
-                msg = f"✅ *Serious Advice Complete!*\n\n*X Post ({x_icon}):*\n{res_serious.get('x_post_text', '')}"
+                msg = f"✅ *Serious Advice Complete!*\n\n*X Post:*\n{res_serious.get('x_post_text', '')}"
                 with open(res_serious.get("image_path"), 'rb') as photo:
                     await update.message.reply_photo(photo=photo, caption=msg, parse_mode="Markdown")
                     
             if res_persona:
-                x_icon = "✅" if res_persona.get('x_success', True) else "❌ FAILED"
-                m_icon = "✅" if res_persona.get('meta_success', True) else "❌ FAILED"
-                msg = f"✅ *Persona Quote Complete!*\n\n*X Post ({x_icon}):*\n{res_persona.get('x_post_text', '')}"
+                msg = f"✅ *Persona Quote Complete!*\n\n*X Post:*\n{res_persona.get('x_post_text', '')}"
                 with open(res_persona.get("image_path"), 'rb') as photo:
                     await update.message.reply_photo(photo=photo, caption=msg, parse_mode="Markdown")
                     
@@ -236,12 +209,10 @@ async def complete_manual_text(update: Update, context: ContextTypes.DEFAULT_TYP
     await update.message.reply_text("⏳ Rendering image and posting...")
     try:
         image_path = await coordinator.publisher.render_tweet_image(quote, filename="manual_quote.png")
-        x_success = await coordinator.publisher.post_to_x_stealth(quote)
-        meta_success = coordinator.publisher.post_to_meta(caption=caption, image_path=image_path)
+        await coordinator.publisher.post_to_x_stealth(quote)
+        coordinator.publisher.post_to_meta(caption=caption, image_path=image_path)
         
-        x_icon = "✅" if x_success else "❌ FAILED"
-        m_icon = "✅" if meta_success else "❌ FAILED"
-        msg = f"✅ *Manual Text Post Complete!*\n\n*X Post ({x_icon}):*\n{quote}\n\n*Meta Caption ({m_icon}):*\n{caption}"
+        msg = f"✅ *Manual Text Post Complete!*\n\n*X Post:*\n{quote}\n\n*Meta Caption:*\n{caption}"
         with open(image_path, 'rb') as photo:
             await update.message.reply_photo(photo=photo, caption=msg, parse_mode="Markdown")
             
@@ -277,12 +248,10 @@ async def complete_manual_photo(update: Update, context: ContextTypes.DEFAULT_TY
             custom_photo_path=photo_path,
             filename="manual_photo_quote.png"
         )
-        x_success = await coordinator.publisher.post_to_x_stealth(caption, image_path=photo_path)
-        meta_success = coordinator.publisher.post_to_meta(caption=caption, image_path=rendered_image_path)
+        await coordinator.publisher.post_to_x_stealth(caption, image_path=photo_path)
+        coordinator.publisher.post_to_meta(caption=caption, image_path=rendered_image_path)
         
-        x_icon = "✅" if x_success else "❌ FAILED"
-        m_icon = "✅" if meta_success else "❌ FAILED"
-        msg = f"✅ *Manual Photo Post Complete!*\n\n*X Post ({x_icon}) & Meta Caption ({m_icon}):*\n{caption}"
+        msg = f"✅ *Manual Photo Post Complete!*\n\n*X Post & Meta Caption:*\n{caption}"
         with open(rendered_image_path, 'rb') as photo:
             await update.message.reply_photo(photo=photo, caption=msg, parse_mode="Markdown")
             
@@ -294,22 +263,6 @@ async def complete_manual_photo(update: Update, context: ContextTypes.DEFAULT_TY
     reply_markup = ReplyKeyboardMarkup(social_menu_keyboard, resize_keyboard=True, one_time_keyboard=False)
     await update.message.reply_text("--- Social Agent Menu ---\nWhat do you want to do next?", reply_markup=reply_markup)
     return SOCIAL_MENU
-
-async def settings_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text
-    if text.startswith("0"):
-        reply_markup = ReplyKeyboardMarkup(main_menu_keyboard, resize_keyboard=True, one_time_keyboard=False)
-        await update.message.reply_text("=== Welcome to Chronos Master Orchestrator ===\nWhich agent do you want to use?", reply_markup=reply_markup)
-        return MAIN_MENU
-    elif text.startswith("1"):
-        coordinator.dry_run = not coordinator.dry_run
-        status = "ON" if coordinator.dry_run else "OFF"
-        reply_markup = ReplyKeyboardMarkup(get_settings_keyboard(), resize_keyboard=True, one_time_keyboard=False)
-        await update.message.reply_text(f"Dry Run is now {status}.", reply_markup=reply_markup)
-        return SETTINGS_MENU
-    else:
-        await update.message.reply_text("Invalid choice.")
-        return SETTINGS_MENU
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = ReplyKeyboardMarkup(main_menu_keyboard, resize_keyboard=True, one_time_keyboard=False)
@@ -338,7 +291,6 @@ def main():
             MAIN_MENU: [MessageHandler(filters.TEXT & ~filters.COMMAND, main_menu_handler)],
             SOCIAL_MENU: [MessageHandler(filters.TEXT & ~filters.COMMAND, social_menu_handler)],
             MANUAL_TYPE: [MessageHandler(filters.TEXT & ~filters.COMMAND, manual_type_handler)],
-            SETTINGS_MENU: [MessageHandler(filters.TEXT & ~filters.COMMAND, settings_menu_handler)],
             
             TEXT_QUOTE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_text_quote)],
             TEXT_CAPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, complete_manual_text)],
