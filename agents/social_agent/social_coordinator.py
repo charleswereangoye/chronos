@@ -199,9 +199,7 @@ class SocialAgentCoordinator:
         return {
             "image_path": image_path or video_path,
             "x_post_text": x_post_text,
-            "meta_caption": caption,
-            "x_success": x_success,
-            "meta_success": meta_success
+            "meta_caption": caption
         }
 
     async def run_manual(self):
