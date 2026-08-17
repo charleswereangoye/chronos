@@ -26,6 +26,11 @@ TEXT_QUOTE = 4
 TEXT_CAPTION = 5
 PHOTO_FILE = 6
 PHOTO_CAPTION = 7
+SETTINGS_MENU = 8
+REVIEW_POST = 9
+EDIT_QUOTE = 10
+EDIT_X_POST = 11
+EDIT_CAPTION = 12
 
 # Keyboards
 main_menu_keyboard = [
@@ -43,6 +48,7 @@ social_menu_keyboard = [
     ["4. ⚡ Check for breaking news"],
     ["5. 🚀 Run all standard pipelines"],
     ["6. ✍️ Create a custom manual post"],
+    ["7. 🎬 Generate Video Reel Meme"],
     ["0. 🔙 Back to Main Menu"]
 ]
 
@@ -50,6 +56,15 @@ manual_type_keyboard = [
     ["1. 📝 Text Quote Only"],
     ["2. 📸 Photo + Caption"],
     ["0. 🚫 Cancel"]
+]
+
+review_keyboard = [
+    ["✅ Approve & Post"],
+    ["✏️ Edit Image Quote / News Text"],
+    ["✏️ Edit X Post Text"],
+    ["✏️ Edit Meta Caption"],
+    ["🔄 Reject & Regenerate"],
+    ["🚫 Cancel"]
 ]
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -89,96 +104,201 @@ async def social_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         return MAIN_MENU
         
     elif text.startswith("1"):
-        await update.message.reply_text("⏳ Running News Pipeline. This might take a minute...", reply_markup=ReplyKeyboardRemove())
+        await update.message.reply_text("⏳ Generating News draft. This might take a minute...", reply_markup=ReplyKeyboardRemove())
         try:
-            result = await coordinator.run_news()
-            if result:
-                msg = f"✅ *News Pipeline Complete!*\n\n*X Post:*\n{result.get('x_post_text', '')}\n\n*Meta Caption:*\n{result.get('meta_caption', '')}"
-                with open(result.get("image_path"), 'rb') as photo:
-                    await update.message.reply_photo(photo=photo, caption=msg, parse_mode="Markdown")
-            else:
-                await update.message.reply_text("✅ News Pipeline Complete!")
+            draft = await coordinator.generate_news_draft()
+            context.user_data['draft'] = draft
+            msg = f"📝 *NEWS DRAFT GENERATED*\n\n*News Text:*\n{draft['news_text']}\n\n*X Post:*\n{draft['x_post_text']}\n\n*Meta Caption:*\n{draft['caption']}"
+            reply_markup = ReplyKeyboardMarkup(review_keyboard, resize_keyboard=True, one_time_keyboard=False)
+            await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=reply_markup)
+            return REVIEW_POST
         except Exception as e:
             await update.message.reply_text(f"❌ Error: {e}")
             
     elif text.startswith("2"):
-        await update.message.reply_text("⏳ Running Serious Advice Pipeline...", reply_markup=ReplyKeyboardRemove())
+        await update.message.reply_text("⏳ Generating Serious Advice draft...", reply_markup=ReplyKeyboardRemove())
         try:
-            result = await coordinator.run_serious()
-            if result:
-                msg = f"✅ *Serious Advice Pipeline Complete!*\n\n*X Post:*\n{result.get('x_post_text', '')}\n\n*Meta Caption:*\n{result.get('meta_caption', '')}"
-                with open(result.get("image_path"), 'rb') as photo:
-                    await update.message.reply_photo(photo=photo, caption=msg, parse_mode="Markdown")
-            else:
-                await update.message.reply_text("✅ Serious Advice Pipeline Complete!")
+            draft = await coordinator.generate_serious_draft()
+            context.user_data['draft'] = draft
+            msg = f"📝 *SERIOUS DRAFT GENERATED*\n\n*Image Quote:*\n{draft['quote']}\n\n*X Post:*\n{draft['x_post_text']}\n\n*Meta Caption:*\n{draft['caption']}"
+            reply_markup = ReplyKeyboardMarkup(review_keyboard, resize_keyboard=True, one_time_keyboard=False)
+            await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=reply_markup)
+            return REVIEW_POST
         except Exception as e:
             await update.message.reply_text(f"❌ Error: {e}")
             
     elif text.startswith("3"):
-        await update.message.reply_text("⏳ Running Persona Quote Pipeline...", reply_markup=ReplyKeyboardRemove())
+        await update.message.reply_text("⏳ Generating Persona Quote draft...", reply_markup=ReplyKeyboardRemove())
         try:
-            result = await coordinator.run()
-            if result:
-                msg = f"✅ *Persona Quote Pipeline Complete!*\n\n*X Post:*\n{result.get('x_post_text', '')}\n\n*Meta Caption:*\n{result.get('meta_caption', '')}"
-                with open(result.get("image_path"), 'rb') as photo:
-                    await update.message.reply_photo(photo=photo, caption=msg, parse_mode="Markdown")
-            else:
-                await update.message.reply_text("✅ Persona Quote Pipeline Complete!")
+            draft = await coordinator.generate_persona_draft()
+            context.user_data['draft'] = draft
+            msg = f"📝 *PERSONA DRAFT GENERATED*\n\n*Image Quote:*\n{draft['quote']}\n\n*X Post:*\n{draft['x_post_text']}\n\n*Meta Caption:*\n{draft['caption']}"
+            reply_markup = ReplyKeyboardMarkup(review_keyboard, resize_keyboard=True, one_time_keyboard=False)
+            await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=reply_markup)
+            return REVIEW_POST
         except Exception as e:
             await update.message.reply_text(f"❌ Error: {e}")
             
     elif text.startswith("4"):
         await update.message.reply_text("⏳ Checking for breaking news...", reply_markup=ReplyKeyboardRemove())
         try:
-            result = await coordinator.run(check_events=True)
-            if result:
-                msg = f"🚨 *BREAKING NEWS POSTED!*\n\n*X Post:*\n{result.get('x_post_text', '')}\n\n*Meta Caption:*\n{result.get('meta_caption', '')}"
-                with open(result.get("image_path"), 'rb') as photo:
-                    await update.message.reply_photo(photo=photo, caption=msg, parse_mode="Markdown")
+            draft = await coordinator.generate_persona_draft(check_events=True)
+            if draft:
+                context.user_data['draft'] = draft
+                msg = f"🚨 *BREAKING NEWS DRAFT GENERATED!*\n\n*Image Quote:*\n{draft['quote']}\n\n*X Post:*\n{draft['x_post_text']}\n\n*Meta Caption:*\n{draft['caption']}"
+                reply_markup = ReplyKeyboardMarkup(review_keyboard, resize_keyboard=True, one_time_keyboard=False)
+                await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=reply_markup)
+                return REVIEW_POST
             else:
                 await update.message.reply_text("ℹ️ No breaking news found.")
         except Exception as e:
             await update.message.reply_text(f"❌ Error: {e}")
             
     elif text.startswith("5"):
-        await update.message.reply_text("⏳ Running all standard pipelines...", reply_markup=ReplyKeyboardRemove())
-        try:
-            res_news = await coordinator.run_news()
-            res_serious = await coordinator.run_serious()
-            res_persona = await coordinator.run()
-            
-            if res_news:
-                msg = f"✅ *News Pipeline Complete!*\n\n*X Post:*\n{res_news.get('x_post_text', '')}"
-                with open(res_news.get("image_path"), 'rb') as photo:
-                    await update.message.reply_photo(photo=photo, caption=msg, parse_mode="Markdown")
-            
-            if res_serious:
-                msg = f"✅ *Serious Advice Complete!*\n\n*X Post:*\n{res_serious.get('x_post_text', '')}"
-                with open(res_serious.get("image_path"), 'rb') as photo:
-                    await update.message.reply_photo(photo=photo, caption=msg, parse_mode="Markdown")
-                    
-            if res_persona:
-                msg = f"✅ *Persona Quote Complete!*\n\n*X Post:*\n{res_persona.get('x_post_text', '')}"
-                with open(res_persona.get("image_path"), 'rb') as photo:
-                    await update.message.reply_photo(photo=photo, caption=msg, parse_mode="Markdown")
-                    
-            await update.message.reply_text("✅ All Pipelines Complete!")
-        except Exception as e:
-            await update.message.reply_text(f"❌ Error: {e}")
+        await update.message.reply_text("⚠️ 'Run all pipelines' is currently disabled in manual review mode. Please run pipelines individually.", reply_markup=ReplyKeyboardRemove())
             
     elif text.startswith("6"):
         reply_markup = ReplyKeyboardMarkup(manual_type_keyboard, resize_keyboard=True, one_time_keyboard=True)
         await update.message.reply_text("--- Manual Custom Post ---\nChoose post type:", reply_markup=reply_markup)
         return MANUAL_TYPE
         
+    elif text.startswith("7"):
+        await update.message.reply_text("⏳ Generating Video Reel Meme draft...", reply_markup=ReplyKeyboardRemove())
+        try:
+            draft = await coordinator.generate_video_draft()
+            context.user_data['draft'] = draft
+            msg = f"📝 *VIDEO DRAFT GENERATED*\n\n*Overlay Text:*\n{draft['overlay_text']}\n\n*Caption:*\n{draft['caption']}\n\n*Hashtags:*\n{draft['hashtags']}"
+            reply_markup = ReplyKeyboardMarkup(review_keyboard, resize_keyboard=True, one_time_keyboard=False)
+            if 'template_video' in draft and os.path.exists(draft['template_video']):
+                with open(draft['template_video'], 'rb') as vfile:
+                    await update.message.reply_video(video=vfile, caption=msg, parse_mode="Markdown", read_timeout=180, write_timeout=180, connect_timeout=180, reply_markup=reply_markup)
+            else:
+                await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=reply_markup)
+            return REVIEW_POST
+        except Exception as e:
+            await update.message.reply_text(f"❌ Error: {e}")
+
     else:
         await update.message.reply_text("Invalid choice. Please choose from the keyboard.")
         return SOCIAL_MENU
 
-    # After a successful task (not 0 or 6), go back to Social Menu
+    # Return to social menu on non-halting actions
     reply_markup = ReplyKeyboardMarkup(social_menu_keyboard, resize_keyboard=True, one_time_keyboard=False)
     await update.message.reply_text("--- Social Agent Menu ---\nWhat do you want to do next?", reply_markup=reply_markup)
     return SOCIAL_MENU
+
+# --- DRAFT REVIEW LOGIC ---
+async def review_post_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text
+    draft = context.user_data.get('draft')
+    
+    if not draft:
+        reply_markup = ReplyKeyboardMarkup(social_menu_keyboard, resize_keyboard=True, one_time_keyboard=False)
+        await update.message.reply_text("No draft found. Back to menu.", reply_markup=reply_markup)
+        return SOCIAL_MENU
+
+    if text.startswith("✅"):
+        await update.message.reply_text("⏳ Rendering media and publishing approved post...", reply_markup=ReplyKeyboardRemove())
+        try:
+            result = await coordinator.publish_approved_post(draft)
+            x_icon = "✅" if result.get('x_success', True) else "❌ FAILED"
+            m_icon = "✅" if result.get('meta_success', True) else "❌ FAILED"
+            msg = f"✅ *Pipeline Complete!*\n\n*X Post ({x_icon}):*\n{result.get('x_post_text', '')}\n\n*Meta Caption ({m_icon}):*\n{result.get('meta_caption', '')}"
+            media_path = result.get("image_path")
+            if media_path:
+                with open(media_path, 'rb') as media:
+                    if media_path.endswith('.mp4'):
+                        await update.message.reply_video(video=media, caption=msg, parse_mode="Markdown", read_timeout=180, write_timeout=180, connect_timeout=180)
+                    else:
+                        await update.message.reply_photo(photo=media, caption=msg, parse_mode="Markdown", read_timeout=180, write_timeout=180, connect_timeout=180)
+        except Exception as e:
+            await update.message.reply_text(f"❌ Error: {e}")
+            
+        reply_markup = ReplyKeyboardMarkup(social_menu_keyboard, resize_keyboard=True, one_time_keyboard=False)
+        await update.message.reply_text("--- Social Agent Menu ---\nWhat do you want to do next?", reply_markup=reply_markup)
+        return SOCIAL_MENU
+        
+    elif "Edit Image Quote" in text or "Edit News Text" in text:
+        val = draft.get('quote') or draft.get('news_text') or draft.get('overlay_text')
+        await update.message.reply_text(f"Current text: {val}\n\nPlease reply with the new text:", reply_markup=ReplyKeyboardRemove())
+        return EDIT_QUOTE
+        
+    elif "Edit X Post Text" in text:
+        await update.message.reply_text(f"Current text: {draft.get('x_post_text', '')}\n\nPlease reply with the new text:", reply_markup=ReplyKeyboardRemove())
+        return EDIT_X_POST
+        
+    elif "Edit Meta Caption" in text:
+        await update.message.reply_text(f"Current text: {draft.get('caption', '')}\n\nPlease reply with the new text:", reply_markup=ReplyKeyboardRemove())
+        return EDIT_CAPTION
+        
+    elif text.startswith("🔄"):
+        await update.message.reply_text("⏳ Regenerating draft...", reply_markup=ReplyKeyboardRemove())
+        try:
+            if draft['type'] == 'persona':
+                new_draft = await coordinator.generate_persona_draft()
+            elif draft['type'] == 'news':
+                new_draft = await coordinator.generate_news_draft()
+            elif draft['type'] == 'serious':
+                new_draft = await coordinator.generate_serious_draft()
+            elif draft['type'] == 'video':
+                new_draft = await coordinator.generate_video_draft()
+                
+            context.user_data['draft'] = new_draft
+            val = new_draft.get('quote') or new_draft.get('news_text') or new_draft.get('overlay_text')
+            msg = f"📝 *NEW DRAFT GENERATED*\n\n*Image/News/Overlay Text:*\n{val}\n\n*X Post:*\n{new_draft.get('x_post_text', '')}\n\n*Meta Caption:*\n{new_draft.get('caption', '')}"
+            reply_markup = ReplyKeyboardMarkup(review_keyboard, resize_keyboard=True, one_time_keyboard=False)
+            await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=reply_markup)
+            return REVIEW_POST
+        except Exception as e:
+            await update.message.reply_text(f"❌ Error: {e}")
+            reply_markup = ReplyKeyboardMarkup(social_menu_keyboard, resize_keyboard=True, one_time_keyboard=False)
+            await update.message.reply_text("--- Social Agent Menu ---\nWhat do you want to do next?", reply_markup=reply_markup)
+            return SOCIAL_MENU
+            
+    elif text.startswith("🚫"):
+        reply_markup = ReplyKeyboardMarkup(social_menu_keyboard, resize_keyboard=True, one_time_keyboard=False)
+        await update.message.reply_text("Canceled. Back to Social Agent Menu.", reply_markup=reply_markup)
+        return SOCIAL_MENU
+        
+    else:
+        await update.message.reply_text("Invalid choice. Please select from the keyboard.")
+        return REVIEW_POST
+
+# --- EDIT HANDLERS ---
+async def edit_quote_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    draft = context.user_data['draft']
+    if 'quote' in draft:
+        draft['quote'] = update.message.text
+    elif 'news_text' in draft:
+        draft['news_text'] = update.message.text
+    elif 'overlay_text' in draft:
+        draft['overlay_text'] = update.message.text
+    
+    val = draft.get('quote') or draft.get('news_text') or draft.get('overlay_text')
+    msg = f"📝 *DRAFT UPDATED*\n\n*Image/News/Overlay Text:*\n{val}\n\n*X Post:*\n{draft.get('x_post_text', '')}\n\n*Meta Caption:*\n{draft.get('caption', '')}"
+    reply_markup = ReplyKeyboardMarkup(review_keyboard, resize_keyboard=True, one_time_keyboard=False)
+    await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=reply_markup)
+    return REVIEW_POST
+
+async def edit_x_post_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    draft = context.user_data['draft']
+    draft['x_post_text'] = update.message.text
+    
+    val = draft.get('quote') or draft.get('news_text') or draft.get('overlay_text')
+    msg = f"📝 *DRAFT UPDATED*\n\n*Image/News/Overlay Text:*\n{val}\n\n*X Post:*\n{draft['x_post_text']}\n\n*Meta Caption:*\n{draft.get('caption', '')}"
+    reply_markup = ReplyKeyboardMarkup(review_keyboard, resize_keyboard=True, one_time_keyboard=False)
+    await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=reply_markup)
+    return REVIEW_POST
+
+async def edit_caption_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    draft = context.user_data['draft']
+    draft['caption'] = update.message.text
+    
+    val = draft.get('quote') or draft.get('news_text') or draft.get('overlay_text')
+    msg = f"📝 *DRAFT UPDATED*\n\n*Image/News/Overlay Text:*\n{val}\n\n*X Post:*\n{draft.get('x_post_text', '')}\n\n*Meta Caption:*\n{draft['caption']}"
+    reply_markup = ReplyKeyboardMarkup(review_keyboard, resize_keyboard=True, one_time_keyboard=False)
+    await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=reply_markup)
+    return REVIEW_POST
 
 async def manual_type_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
@@ -291,6 +411,11 @@ def main():
             MAIN_MENU: [MessageHandler(filters.TEXT & ~filters.COMMAND, main_menu_handler)],
             SOCIAL_MENU: [MessageHandler(filters.TEXT & ~filters.COMMAND, social_menu_handler)],
             MANUAL_TYPE: [MessageHandler(filters.TEXT & ~filters.COMMAND, manual_type_handler)],
+            SETTINGS_MENU: [MessageHandler(filters.TEXT & ~filters.COMMAND, settings_menu_handler)],
+            REVIEW_POST: [MessageHandler(filters.TEXT & ~filters.COMMAND, review_post_handler)],
+            EDIT_QUOTE: [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_quote_handler)],
+            EDIT_X_POST: [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_x_post_handler)],
+            EDIT_CAPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_caption_handler)],
             
             TEXT_QUOTE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_text_quote)],
             TEXT_CAPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, complete_manual_text)],
@@ -298,7 +423,8 @@ def main():
             PHOTO_FILE: [MessageHandler(filters.PHOTO, receive_photo)],
             PHOTO_CAPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, complete_manual_photo)],
         },
-        fallbacks=[CommandHandler("cancel", cancel)]
+        fallbacks=[CommandHandler("cancel", cancel), CommandHandler("start", start)],
+        allow_reentry=True
     )
 
     application.add_handler(conv_handler)

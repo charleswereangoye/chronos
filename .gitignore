@@ -29,13 +29,24 @@ venv.bak/
 *.swp
 *.swo
 
-# Session Data
+# Session & State Data (Preventing Leakage of API Keys and Cookies)
 agents/social_agent/state/
-state.json
+*state.json
+cookies.json
 history.json
 analytics.json
+
+# Generated Media Outputs (Preventing Repo Bloat)
 output/
 social_agent/output/
+*.mp4
+*.webm
+*_quote.png
+daily_news.png
+video_header.png
+
+# Logs
+*.log
 
 # Security and Credentials (Preventing Vulnerabilities)
 *.pem

@@ -5,3 +5,5 @@ twifork
 requests
 feedparser
 python-telegram-bot
+moviepy==2.2.1
+yt-dlp
