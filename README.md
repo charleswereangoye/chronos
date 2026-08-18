@@ -19,18 +19,18 @@
 
 ---
 
-## 🌟 Project Vision & Executive Summary
+## Project Vision & Executive Summary
 
 Chronos is a modular, autonomous multi-agent operating system designed to automate complex, real-world workflows without the burden of monthly SaaS fees or paid API subscriptions. It acts as a fully autonomous digital employee, running seamlessly in the background.
 
 **The Core Philosophy:**
-**🧠 Intelligent Brains (LLMs) + ⚙️ Autonomous Hands (Playwright/Scrapers) + 🕹️ Human-in-the-Loop (Telegram Orchestrator)**
+**Intelligent Brains (LLMs) + Autonomous Hands (Playwright/Scrapers) + Human-in-the-Loop (Telegram Orchestrator)**
 
 Chronos leverages Gemini's reasoning engine alongside headless stealth automation tools to orchestrate market analysis, multi-platform media production, viral video generation, and workflow automations entirely for free.
 
 ---
 
-## 🏗️ Complete Multi-Agent Architecture
+## Complete Multi-Agent Architecture
 
 The ecosystem relies on an interactive orchestration layer that delegates instructions to specific agent pipelines while maintaining centralized memory logic.
 
@@ -49,7 +49,7 @@ graph TD
     MO -- "Dispatches Commands" --> JA
 
     %% Memory Module
-    MEM[("🗄️ Contextual Memory Bank<br/>(history.json)") ]
+    MEM[("🗄️ Contextual Memory Bank<br/>(history.json)")]
     SA <--> MEM
 
     %% Social Agent Internal Flow
@@ -83,7 +83,7 @@ graph TD
 
 ---
 
-## 🛠️ Granular Sub-Agent Technical Breakdown
+## Granular Sub-Agent Technical Breakdown
 
 ### 1. Master Telegram GUI Orchestrator
 The central nerve center of Chronos (`orchestrator/telegram_orchestrator.py`).
@@ -111,14 +111,14 @@ An automated career manager.
 
 ---
 
-## 📸 Interactive Visual Showcase
+## Interactive Visual Showcase
 
 <table>
   <tr>
     <td align="center" width="50%">
       <h3>Dynamic Static Quote Canvas</h3>
       <p><em>Playwright 1080x1350 Canva-style rendering</em></p>
-      <img src="assets/demos/demo_quote.png" alt="Static Quote Demo" width="100%"/>
+      <img src="assets/demos/demo_quote.jpg" alt="Static Quote Demo" width="100%"/>
     </td>
     <td align="center" width="50%">
       <h3>Viral Video Reel Meme</h3>
@@ -130,10 +130,10 @@ An automated career manager.
 
 ---
 
-## ⚙️ Technical Specs & Configuration
+## Technical Specs & Configuration
 
 <details>
-<summary><b>🛠️ Environment Variables Configuration (.env.example)</b></summary>
+<summary><b>Environment Variables Configuration (.env.example)</b></summary>
 <br>
 Create a <code>.env</code> file in the root directory and populate it:
 
@@ -157,7 +157,7 @@ TELEGRAM_BOT_TOKEN="your_telegram_bot_token"
 </details>
 
 <details>
-<summary><b>🍪 Zero-Cost Stealth Cookie Ingestion (state.json & tiktok_state.json)</b></summary>
+<summary><b>Zero-Cost Stealth Cookie Ingestion (state.json & tiktok_state.json)</b></summary>
 <br>
 To execute stealth API bypasses without triggering bot detections, you must provide exported browser session cookies:
 
@@ -170,7 +170,7 @@ To execute stealth API bypasses without triggering bot detections, you must prov
 </details>
 
 <details>
-<summary><b>🐳 Docker Containerization & Background Daemons</b></summary>
+<summary><b>Docker Containerization & Background Daemons</b></summary>
 <br>
 Chronos is production-ready for 24/7 headless execution. 
 
@@ -184,7 +184,7 @@ The provided `Dockerfile` and `entrypoint.sh` automatically configure the requir
 
 ---
 
-## 💬 Telegram Orchestrator Command Reference
+## Telegram Orchestrator Command Reference
 
 Interact directly with Chronos via the Telegram GUI.
 
@@ -200,7 +200,7 @@ Interact directly with Chronos via the Telegram GUI.
 
 ---
 
-## 🚀 Installation & Quickstart Guide
+## Installation & Quickstart Guide
 
 If running locally (without Docker), follow these exact steps:
 
@@ -225,9 +225,9 @@ python orchestrator/telegram_orchestrator.py
 
 ---
 
-## 🗺️ Project Roadmap & Future Milestones
+## Project Roadmap & Future Milestones
 
-**✅ Completed Milestones:**
+**Completed Milestones:**
 - [x] Master Telegram Orchestrator & CLI Interface.
 - [x] Playwright HTML-to-Image Rendering Engine (High-Res 1080x1350).
 - [x] Twikit Stealth X Integration & Meta Graph API (Reels & Feed) Integration.
@@ -235,7 +235,7 @@ python orchestrator/telegram_orchestrator.py
 - [x] Video Meme Generator (MoviePy vertical compositing + `yt-dlp` clipping).
 - [x] JSON Contextual Memory & Emotion Tracking (50-item buffer).
 
-**⏳ Pending Modules:**
+**Pending Modules:**
 - [ ] **YouTube Shorts Automation:** Playwright headless login support for YouTube Shorts stealth uploads.
 - [ ] **Forex Agent Expansion:** MT4/MT5 webhook integration and explicit TradingView alert parsing.
 - [ ] **Job Seeking Agent Complete Pipeline:** Automated IMAP resume matching and Selenium-based auto-apply scripts.
