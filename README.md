@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/banner.png" alt="Chronos Banner" width="70%"/>
+<img src="assets/banner.png" alt="Chronos Banner" width="100%"/>
 
 # CHRONOS
 
