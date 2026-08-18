@@ -19,7 +19,7 @@
 
 ---
 
-## Project Vision & Executive Summary
+## 🌟 Project Vision & Executive Summary
 
 Chronos is a modular, autonomous multi-agent operating system designed to automate complex, real-world workflows without the burden of monthly SaaS fees or paid API subscriptions. It acts as a fully autonomous digital employee, running seamlessly in the background.
 
@@ -30,7 +30,7 @@ Chronos leverages Gemini's reasoning engine alongside headless stealth automatio
 
 ---
 
-## Complete Multi-Agent Architecture
+## 🏗️ Complete Multi-Agent Architecture
 
 The ecosystem relies on an interactive orchestration layer that delegates instructions to specific agent pipelines while maintaining centralized memory logic.
 
@@ -83,7 +83,7 @@ graph TD
 
 ---
 
-## Granular Sub-Agent Technical Breakdown
+## 🛠️ Granular Sub-Agent Technical Breakdown
 
 ### 1. Master Telegram GUI Orchestrator
 The central nerve center of Chronos (`orchestrator/telegram_orchestrator.py`).
@@ -111,7 +111,7 @@ An automated career manager.
 
 ---
 
-## Interactive Visual Showcase
+## 📸 Interactive Visual Showcase
 
 <table>
   <tr>
@@ -130,10 +130,10 @@ An automated career manager.
 
 ---
 
-## Technical Specs & Configuration
+## ⚙️ Technical Specs & Configuration
 
 <details>
-<summary><b>Environment Variables Configuration (.env.example)</b></summary>
+<summary><b>🛠️ Environment Variables Configuration (.env.example)</b></summary>
 <br>
 Create a <code>.env</code> file in the root directory and populate it:
 
@@ -157,7 +157,7 @@ TELEGRAM_BOT_TOKEN="your_telegram_bot_token"
 </details>
 
 <details>
-<summary><b>Zero-Cost Stealth Cookie Ingestion (state.json & tiktok_state.json)</b></summary>
+<summary><b>🍪 Zero-Cost Stealth Cookie Ingestion (state.json & tiktok_state.json)</b></summary>
 <br>
 To execute stealth API bypasses without triggering bot detections, you must provide exported browser session cookies:
 
@@ -170,7 +170,7 @@ To execute stealth API bypasses without triggering bot detections, you must prov
 </details>
 
 <details>
-<summary><b>Docker Containerization & Background Daemons</b></summary>
+<summary><b>🐳 Docker Containerization & Background Daemons</b></summary>
 <br>
 Chronos is production-ready for 24/7 headless execution. 
 
@@ -184,7 +184,7 @@ The provided `Dockerfile` and `entrypoint.sh` automatically configure the requir
 
 ---
 
-## Telegram Orchestrator Command Reference
+## 💬 Telegram Orchestrator Command Reference
 
 Interact directly with Chronos via the Telegram GUI.
 
@@ -200,7 +200,7 @@ Interact directly with Chronos via the Telegram GUI.
 
 ---
 
-## Installation & Quickstart Guide
+## 🚀 Installation & Quickstart Guide
 
 If running locally (without Docker), follow these exact steps:
 
@@ -225,9 +225,9 @@ python orchestrator/telegram_orchestrator.py
 
 ---
 
-## Project Roadmap & Future Milestones
+## 🗺️ Project Roadmap & Future Milestones
 
-**Completed Milestones:**
+**✅ Completed Milestones:**
 - [x] Master Telegram Orchestrator & CLI Interface.
 - [x] Playwright HTML-to-Image Rendering Engine (High-Res 1080x1350).
 - [x] Twikit Stealth X Integration & Meta Graph API (Reels & Feed) Integration.
@@ -235,7 +235,7 @@ python orchestrator/telegram_orchestrator.py
 - [x] Video Meme Generator (MoviePy vertical compositing + `yt-dlp` clipping).
 - [x] JSON Contextual Memory & Emotion Tracking (50-item buffer).
 
-**Pending Modules:**
+**⏳ Pending Modules:**
 - [ ] **YouTube Shorts Automation:** Playwright headless login support for YouTube Shorts stealth uploads.
 - [ ] **Forex Agent Expansion:** MT4/MT5 webhook integration and explicit TradingView alert parsing.
 - [ ] **Job Seeking Agent Complete Pipeline:** Automated IMAP resume matching and Selenium-based auto-apply scripts.
