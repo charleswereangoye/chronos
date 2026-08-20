@@ -14,7 +14,6 @@ from agents.social_agent.news_agent import NewsAgent
 from agents.social_agent.serious_agent import SeriousAgent
 from agents.social_agent.content_router import ContentRouter
 from agents.social_agent.video_meme_agent import VideoMemeAgent
-from agents.social_agent.scout_agent import ScoutAgent
 
 logger = get_logger("SocialAgentCoordinator")
 
@@ -32,7 +31,6 @@ class SocialAgentCoordinator:
         self.serious_agent = SeriousAgent()
         self.router = ContentRouter()
         self.video_agent = VideoMemeAgent()
-        self.scout_agent = ScoutAgent()
         self.memory = MemoryManager()
         self.dry_run = DRY_RUN
 
@@ -118,7 +116,11 @@ class SocialAgentCoordinator:
         persona_profile = self.strategist.generate_persona(research_data, analytics_data)
         
         emotion = persona_profile.get("emotional_filter", "general")
+        
+        # 1. Generate the meme idea
         content = self.video_agent.generate_meme_content(emotion)
+        
+        # 2. Select a pre-downloaded template from the local assets folder
         template_video = self.video_agent.select_template(emotion)
         
         return {
@@ -146,17 +148,19 @@ class SocialAgentCoordinator:
         elif draft['type'] == 'serious':
             image_path = await self.publisher.render_tweet_image(quote, filename="serious_quote.png")
         elif draft['type'] == 'video':
-            x_post_text = f"{quote}\n\n{draft['hashtags']}"
-            caption = f"{caption}\n\n{draft['hashtags']}"
-            
-            # Render the static tweet image to use as the meme header!
-            header_image_path = await self.publisher.render_tweet_image(quote, filename="video_header.png")
+            caption = f"{caption}\n\n{draft.get('hashtags', '')}".strip()
+            x_post_text = caption
             
             template_video_path = draft.get('template_video')
             if not template_video_path:
-                template_video_path = self.video_agent.select_template(draft['emotion'])
+                template_video_path = self.video_agent.select_template(draft.get('emotion', 'general'))
                 
-            video_path = self.video_agent.render_video(header_image_path, template_video_path)
+            if quote:
+                # Render the static tweet image to use as the meme header!
+                header_image_path = await self.publisher.render_tweet_image(quote, filename="video_header.png")
+                video_path = self.video_agent.render_video(header_image_path, template_video_path)
+            else:
+                video_path = template_video_path
             
         print("\n" + "="*80)
         print("\033[1;96m" + " FINAL CONTENT GENERATED ".center(80, "=") + "\033[0m")
@@ -176,8 +180,8 @@ class SocialAgentCoordinator:
             if video_path:
                 x_success = await self.publisher.post_video_to_x(x_post_text, video_path)
                 meta_success = self.publisher.post_reel_to_meta(caption, video_path)
-                await self.publisher.post_to_tiktok_stealth(caption, video_path)
-                self.memory.save_video_post(quote, caption, draft['emotion'], os.path.basename(video_path))
+                logger.info(f"Video generated at {video_path}. Please post to TikTok manually to avoid anti-bot logouts.")
+                self.memory.save_video_post(quote, caption, draft.get('emotion', 'general'), os.path.basename(video_path))
             else:
                 logger.error("Skipping video network posts because video_path is empty (rendering failed).")
                 x_success = False
@@ -199,7 +203,9 @@ class SocialAgentCoordinator:
         return {
             "image_path": image_path or video_path,
             "x_post_text": x_post_text,
-            "meta_caption": caption
+            "meta_caption": caption,
+            "x_success": x_success,
+            "meta_success": meta_success
         }
 
     async def run_manual(self):

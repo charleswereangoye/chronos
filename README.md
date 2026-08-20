@@ -12,7 +12,7 @@
 ![Telegram](https://img.shields.io/badge/Telegram-Bot_GUI-blue.svg?style=for-the-badge&logo=telegram)
 ![MoviePy](https://img.shields.io/badge/MoviePy_%26_yt--dlp-Video_Engine-red.svg?style=for-the-badge&logo=youtube)
 ![Zero Cost](https://img.shields.io/badge/Zero_Cost-$0.00_Overhead-success.svg?style=for-the-badge)
-![Multi-Platform](https://img.shields.io/badge/Multi--Platform-X_%7C_Instagram_%7C_Facebook_%7C_TikTok-black.svg?style=for-the-badge)
+![Multi-Platform](https://img.shields.io/badge/Multi--Platform-X_%7C_Instagram_%7C_Facebook-black.svg?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-purple.svg?style=for-the-badge)
 
 </div>
@@ -97,8 +97,8 @@ An advanced content creation suite designed to emulate an authentic human influe
 - **Video Meme Engine:** Combines `yt-dlp` downloaded templates with `moviepy` vertical (9:16) composite rendering. Overlays dynamic HTML-rendered meme cards and synchronizes viral hashtags (`#forextrading`, `#tradingmemes`, `#fyp`).
 - **Zero-Cost Stealth Publishing:** Completely bypasses standard API rate limits and paywalls:
   - Cookie injection for X (Twitter) via Twikit (`state.json`).
-  - Headless browser uploads for TikTok (`tiktok_state.json`).
   - Direct Meta Graph API integration (handling chunked FB uploads and Catbox temporary cloud hosting for Instagram Reels container processing).
+  - *Note: Automated TikTok publishing has been disabled due to aggressive anti-bot protections causing frequent session logouts. The agent will still generate the video for manual upload.*
 - **Dynamic Memory Engine:** Maintains a circular 50-quote buffer (`history.json`) mapping caption start-phrases and tracking emotional filters (`panic`, `celebration`) to prevent duplicate posting and maintain contextual narrative.
 
 ### 3. Forex Trading Sub-Agent (WIP)
@@ -161,10 +161,9 @@ TELEGRAM_BOT_TOKEN="your_telegram_bot_token"
 <br>
 To execute stealth API bypasses without triggering bot detections, you must provide exported browser session cookies:
 
-1. Log into X (Twitter) and TikTok on your local browser.
+1. Log into X (Twitter) on your local browser.
 2. Export your session cookies in JSON format (using an extension like EditThisCookie).
 3. Place your X cookies at: `agents/social_agent/state/state.json`
-4. Place your TikTok cookies at: `agents/social_agent/state/tiktok_state.json`
 
 *(Note: These files are heavily ignored by `.gitignore` to preserve session security.)*
 </details>
@@ -231,7 +230,7 @@ python orchestrator/telegram_orchestrator.py
 - [x] Master Telegram Orchestrator & CLI Interface.
 - [x] Playwright HTML-to-Image Rendering Engine (High-Res 1080x1350).
 - [x] Twikit Stealth X Integration & Meta Graph API (Reels & Feed) Integration.
-- [x] TikTok Headless Automation via Playwright.
+- [ ] TikTok Headless Automation (Temporarily disabled due to anti-bot restrictions).
 - [x] Video Meme Generator (MoviePy vertical compositing + `yt-dlp` clipping).
 - [x] JSON Contextual Memory & Emotion Tracking (50-item buffer).
 

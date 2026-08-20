@@ -323,7 +323,16 @@ class PublisherAgent:
                 if "id" in ig_res:
                     container_id = ig_res["id"]
                     logger.info(f"IG Container created ({container_id}). Waiting for Instagram to download and process...")
-                    time.sleep(15) # Wait for IG to process the video
+                    
+                    status_url = f"https://graph.facebook.com/v19.0/{container_id}"
+                    for _ in range(12):
+                        time.sleep(5)
+                        status_res = requests.get(status_url, params={"fields": "status_code", "access_token": META_PAGE_ACCESS_TOKEN}).json()
+                        if status_res.get("status_code") == "FINISHED":
+                            break
+                        elif status_res.get("status_code") == "ERROR":
+                            logger.error(f"IG video processing error: {status_res}")
+                            break
                     
                     ig_publish_url = f"https://graph.facebook.com/v19.0/{IG_USER_ID}/media_publish"
                     ig_pub_res = requests.post(ig_publish_url, data={"creation_id": container_id, "access_token": META_PAGE_ACCESS_TOKEN}).json()
@@ -345,43 +354,4 @@ class PublisherAgent:
             
         return overall_success
 
-    async def post_to_tiktok_stealth(self, caption: str, video_path: str) -> bool:
-        logger.info("Starting TikTok Stealth Upload via Playwright...")
-        tiktok_state_path = os.path.join(os.path.dirname(STATE_FILE_PATH), "tiktok_state.json")
-        if not os.path.exists(tiktok_state_path):
-            logger.warning("tiktok_state.json not found! Cannot post to TikTok. Run manual login script first.")
-            return False
-            
-        try:
-            async with async_playwright() as p:
-                browser = await p.chromium.launch(headless=True)
-                context = await browser.new_context(storage_state=tiktok_state_path)
-                page = await context.new_page()
-                
-                await page.goto("https://www.tiktok.com/creator-center/upload")
-                logger.info("Navigated to TikTok Creator Center.")
-                
-                # Wait for file input and upload
-                file_input = await page.wait_for_selector("input[type='file']")
-                await file_input.set_input_files(os.path.abspath(video_path))
-                logger.info("Video file uploaded.")
-                
-                # Wait for upload to complete and caption box to be ready
-                await page.wait_for_timeout(5000)
-                
-                # In a full implementation, we'd select the DraftEditor box and type the caption.
-                logger.info("Setting caption...")
-                # await page.type('.DraftEditor-editorContainer', caption, delay=100)
-                
-                # Click Post
-                logger.info("Clicking Post...")
-                # await page.click('button:has-text("Post")')
-                
-                # Wait for success confirmation
-                await page.wait_for_timeout(3000)
-                await browser.close()
-                logger.info("Successfully posted to TikTok.")
-                return True
-        except Exception as e:
-            logger.error(f"Failed to post to TikTok: {e}")
-            return False
+
