@@ -33,7 +33,7 @@ class VideoMemeAgent:
         The current vibe/emotion of the meme is: {emotion_category}.
         
         Generate a JSON object with three keys:
-        - "overlay_text": A punchy, sarcastic, relatable 1-2 sentence text overlay (Trade Republic style). e.g. "Me watching my stop loss get hit by 1 pip before price reverses 100 pips."
+        - "overlay_text": A punchy, sarcastic, relatable 1-2 sentence text overlay. Format it like a POV (e.g., "POV: You finally closed your losing trade just to watch the chart immediately moon without you").
         - "caption": A 1-2 sentence engaging caption expanding on the meme for TikTok/Reels.
         - "hashtags": A string of 5-8 algorithm-optimized hashtags (e.g. "#trading #forex #daytrader").
         
@@ -49,9 +49,35 @@ class VideoMemeAgent:
         except Exception as e:
             logger.error(f"Failed to parse meme content: {e}")
             return {
-                "overlay_text": "When the market does exactly what you said it wouldn't do.",
+                "overlay_text": "POV: When the market does exactly what you said it wouldn't do.",
                 "caption": "It really do be like that sometimes.",
                 "hashtags": "#trading #forex #xauusd"
+            }
+            
+    def generate_caption_for_meme(self, meme_text: str) -> dict:
+        logger.info("Generating caption and hashtags for custom meme quote.")
+        prompt = f"""
+        You are a highly authentic human day trader creating a viral short-form video meme.
+        The meme has the following text overlay: "{meme_text}".
+        
+        Generate a JSON object with two keys:
+        - "caption": A 1-2 sentence engaging caption expanding on the meme for TikTok/Reels.
+        - "hashtags": A string of 5-8 algorithm-optimized hashtags (e.g. "#trading #forex #daytrader").
+        
+        Output ONLY the JSON object, no markdown wrappers.
+        """
+        response = generate_content_with_failover(prompt)
+        raw_text = response.text.strip()
+        if raw_text.startswith("```"):
+            raw_text = raw_text.replace("```json", "").replace("```", "").strip()
+            
+        try:
+            return json.loads(raw_text)
+        except Exception as e:
+            logger.error(f"Failed to parse caption: {e}")
+            return {
+                "caption": "Just trading things",
+                "hashtags": "#trading #forex #crypto"
             }
 
     def select_template(self, emotion_category: str = "general") -> str:
@@ -81,11 +107,8 @@ class VideoMemeAgent:
         try:
             clip = VideoFileClip(template_video_path)
             
-            # Heuristic Trimming: Cap at 6s to keep it punchy, and shave off last 0.5s to remove potential watermarks
-            if clip.duration and clip.duration > 6.5:
-                clip = clip.subclipped(0, 6.0)
-            elif clip.duration and clip.duration > 3.0:
-                clip = clip.subclipped(0, clip.duration - 0.5)
+            # No trimming, keep the original template duration
+
             
             # Target 1080x1920 (9:16)
             target_w, target_h = 1080, 1920
