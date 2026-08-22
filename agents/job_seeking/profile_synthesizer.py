@@ -52,9 +52,11 @@ You MUST heavily tailor the candidate's JSON profile to this job.
 Here is the expected JSON schema (do not output anything other than raw valid JSON):
 {{
     "name": "Full Name",
+    "title": "Professional Title (e.g., Software Engineer)",
     "email": "Email Address",
     "phone": "Phone Number",
     "location": "City, Country",
+    "target_company": "The name of the company from the target job description (if provided, otherwise leave empty). Clean and capitalize appropriately (e.g., 'Glovo', 'Google').",
     "summary": "A powerful 2-3 sentence professional summary highlighting their strongest skills and background based on all sources.",
     "experience": [
         {{
