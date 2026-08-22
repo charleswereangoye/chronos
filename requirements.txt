@@ -7,3 +7,6 @@ feedparser
 python-telegram-bot
 moviepy==2.2.1
 yt-dlp
+colorthief
+jinja2
+pypdf
