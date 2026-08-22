@@ -144,7 +144,7 @@ class VideoMemeAgent:
             ])
             
             logger.info("Writing final MP4 using MoviePy...")
-            final_clip.write_videofile(output_file, codec="libx264", audio_codec="aac", fps=24, preset="ultrafast", threads=4, logger=None)
+            final_clip.write_videofile(output_file, codec="libx264", audio_codec="aac", bitrate="8000k", fps=30, preset="medium", threads=4, logger=None)
             
             clip.close()
             final_clip.close()
