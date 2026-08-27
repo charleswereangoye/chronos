@@ -109,10 +109,9 @@ main_menu_keyboard = [
 ]
 
 job_seeking_menu_keyboard = [
-    ["1. 🎨 Tailor CV to Company URL"],
-    ["2. 📝 AI Cover Letter Generator"],
-    ["3. 🔍 Job Posting Scraper"],
-    ["4. 🤖 Interview Prep Bot"],
+    ["1. 🎨 Tailor CV & Cover Letter"],
+    ["2. 🔍 Job Posting Scraper"],
+    ["3. 🤖 Interview Prep Bot"],
     ["0. 🔙 Back to Main Menu"],
 ]
 
@@ -1285,19 +1284,12 @@ async def job_seeking_menu_handler(update: Update, context: ContextTypes.DEFAULT
 
     elif text.startswith("1"):
         await update.message.reply_text(
-            "🔗 Please send the company URL you want to tailor your CV to (e.g., https://google.com):",
+            "🔗 Please send the job posting URL you want to tailor your CV and Cover Letter to:",
             reply_markup=ReplyKeyboardRemove(),
         )
         return TAILOR_CV_URL
 
     elif text.startswith("2"):
-        await update.message.reply_text(
-            "🔗 Please send the job posting URL for your cover letter:",
-            reply_markup=ReplyKeyboardRemove(),
-        )
-        return COVER_LETTER_URL
-
-    elif text.startswith("3"):
         await update.message.reply_text(
             "⏳ Generating top matching remote jobs...",
             reply_markup=ReplyKeyboardRemove(),
@@ -1318,7 +1310,7 @@ async def job_seeking_menu_handler(update: Update, context: ContextTypes.DEFAULT
         )
         return JOB_SEEKING_MENU
 
-    elif text.startswith("4"):
+    elif text.startswith("3"):
         await update.message.reply_text(
             "🔗 Please send the job posting URL to generate interview prep:",
             reply_markup=ReplyKeyboardRemove(),
@@ -1398,13 +1390,14 @@ async def receive_interview_prep_url(
 async def receive_cv_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = update.message.text.strip()
     await update.message.reply_text(
-        f"⏳ Tailoring CV for {url}...\nThis might take a minute."
+        f"⏳ Tailoring CV and Cover Letter for {url}...\nThis might take a minute."
     )
 
     try:
         from agents.job_seeking.tailor_engine import TailorEngine
         from agents.job_seeking.profile_synthesizer import ProfileSynthesizer
         from agents.job_seeking.cover_letter_generator import CoverLetterGenerator
+        import uuid
 
         # Scrape job description
         cover_gen = CoverLetterGenerator()
@@ -1422,9 +1415,12 @@ async def receive_cv_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         html_content = engine.render_html_cv(color_hex, candidate_data)
 
-        import uuid
+        company_name = candidate_data.get('target_company', '').strip()
+        safe_company_name = "".join([c for c in company_name if c.isalnum() or c.isspace()]).replace(" ", "_").lower()
+        if not safe_company_name:
+            safe_company_name = f"company_{uuid.uuid4().hex[:8]}"
 
-        pdf_filename = f"tailored_cv_{uuid.uuid4().hex[:8]}.pdf"
+        pdf_filename = f"{safe_company_name}_cv.pdf"
         output_path = os.path.join(engine.output_dir, pdf_filename)
 
         await engine.generate_pdf(html_content, output_path)
@@ -1434,6 +1430,63 @@ async def receive_cv_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 document=pdf_file,
                 caption=f"✅ Here is the tailored CV for {url} (Brand Color: {color_hex}).",
             )
+            
+        await update.message.reply_text("⏳ Generating Cover Letter...")
+        cover_letter_text = await cover_gen.generate(url)
+        paragraphs = [p.strip() for p in cover_letter_text.split('\n\n') if p.strip()]
+        html_body = "".join(f"<p>{p.replace('\n', '<br>')}</p>" for p in paragraphs)
+
+        cl_html_content = f"""
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <link rel="preconnect" href="https://fonts.googleapis.com">
+            <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+            <style>
+                @page {{ margin: 0; }}
+                body {{ 
+                    font-family: 'Inter', sans-serif; 
+                    line-height: 1.6; 
+                    color: #374151; 
+                    font-size: 11pt; 
+                    margin: 0;
+                    padding: 50px 60px;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }}
+                p {{ margin-top: 0; margin-bottom: 16pt; }}
+                .brand-bar {{ 
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%; 
+                    height: 10px; 
+                    background-color: {color_hex}; 
+                }}
+                .content {{ margin-top: 10px; }}
+            </style>
+        </head>
+        <body>
+            <div class="brand-bar"></div>
+            <div class="content">
+                {html_body}
+            </div>
+        </body>
+        </html>
+        """
+        cl_pdf_filename = f"{safe_company_name}_cover_letter.pdf"
+        cl_output_path = os.path.join(engine.output_dir, cl_pdf_filename)
+        await engine.generate_pdf(cl_html_content, cl_output_path)
+        
+        with open(cl_output_path, "rb") as cl_pdf_file:
+            await update.message.reply_document(
+                document=cl_pdf_file,
+                caption=f"✅ Here is the tailored Cover Letter for {url}.",
+            )
+
+
 
     except Exception as e:
         logger.error(f"Failed to tailor CV: {e}")
@@ -1609,11 +1662,6 @@ def main():
             ],
             TAILOR_CV_URL: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, receive_cv_url)
-            ],
-            COVER_LETTER_URL: [
-                MessageHandler(
-                    filters.TEXT & ~filters.COMMAND, receive_cover_letter_url
-                )
             ],
             INTERVIEW_PREP_URL: [
                 MessageHandler(

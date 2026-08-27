@@ -32,8 +32,22 @@ class TailorEngine:
                 
             color_thief = ColorThief(temp_img)
             dominant_color = color_thief.get_color(quality=1)
-            # dominant_color is a tuple (r, g, b)
-            hex_color = "#{:02x}{:02x}{:02x}".format(dominant_color[0], dominant_color[1], dominant_color[2])
+            r, g, b = dominant_color
+            
+            luminance = (0.299 * r + 0.587 * g + 0.114 * b)
+            if luminance > 200:
+                palette = color_thief.get_palette(color_count=6, quality=1)
+                for pr, pg, pb in palette:
+                    plum = (0.299 * pr + 0.587 * pg + 0.114 * pb)
+                    if plum < 180:
+                        r, g, b = pr, pg, pb
+                        break
+                else:
+                    r = max(0, int(r * 0.6))
+                    g = max(0, int(g * 0.6))
+                    b = max(0, int(b * 0.6))
+
+            hex_color = "#{:02x}{:02x}{:02x}".format(r, g, b)
             return hex_color
         except Exception as e:
             logger.error(f"Failed to get brand color from {url}: {e}")

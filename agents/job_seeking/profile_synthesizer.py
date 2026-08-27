@@ -71,11 +71,13 @@ CRITICAL INSTRUCTIONS:
 
 Expected JSON Schema:
 {{
-    "name": "Charles Were Angoye",
-    "email": "charleswereangoye@gmail.com",
-    "phone": "+254719403678 / +250795589824",
-    "location": "Kigali, Rwanda / Nairobi, Kenya (GMT+2 / EAT)",
-    "summary": "High-impact Software Engineering student and Full-Stack Developer with practical experience in modern React/Next.js frontends, Python/Flask backends, PostgreSQL databases, and containerized Docker environments. Seeking a global remote internship or junior software engineering role.",
+    "name": "Full Name",
+    "title": "Professional Title (e.g., Software Engineer)",
+    "email": "Email Address",
+    "phone": "Phone Number",
+    "location": "City, Country",
+    "target_company": "The name of the company from the target job description (if provided, otherwise leave empty). Clean and capitalize appropriately (e.g., 'Glovo', 'Google').",
+    "summary": "A powerful 2-3 sentence professional summary highlighting their strongest skills and background based on all sources.",
     "experience": [
         {{
             "role": "Backend Developer Intern",

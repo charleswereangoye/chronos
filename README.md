@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/banner.png" alt="Chronos Banner" width="100%"/>
+<img src="assets/banner.jpg" alt="Chronos Banner" width="100%"/>
 
 # CHRONOS
 
@@ -88,7 +88,8 @@ graph TD
 ### 1. Master Telegram GUI Orchestrator
 The central nerve center of Chronos (`orchestrator/telegram_orchestrator.py`).
 - **Interactive Draft Review:** All agents compile JSON drafts (quotes, captions, overlays). The Orchestrator presents these drafts via inline keyboards allowing the user to `✅ Approve`, `✏️ Edit`, or `🔄 Reject` before publishing.
-- **Manual Generation:** Supports manual ingestion of photos and custom video content, processing them through the agentic tagging pipeline.
+- **Manual & Custom Generation:** Full support for manual text, photo, and custom video posts with explicit prompt states for custom captions and hashtags.
+- **Unified Action Buttons:** Streamlined multi-step background flows into single clicks (e.g., "Tailor CV & Cover Letter" runs parallel web scrapers, LLM agents, and PDF generators concurrently).
 - **On-the-Fly Downloader:** Features a `/clip [url] [start] [end]` command utilizing `yt-dlp` to download or clip videos directly from chat into the local templates directory.
 
 ### 2. Social Media & Autonomous Media Engine
@@ -105,9 +106,11 @@ An advanced content creation suite designed to emulate an authentic human influe
 A dedicated financial agent monitoring raw market data.
 - **Monitoring & Alerts:** Evaluates technical setups, parses economic calendars, and feeds real-time price action sentiment back into the Social Agent for cohesive content.
 
-### 4. Job Seeking & Productivity Sub-Agent (WIP)
-An automated career manager.
-- **Workflow Automation:** Integrates IMAP email reading for interview invites, handles automated CV parsing, and maps applicant pipelines without human intervention.
+### 4. Job Seeking & Productivity Sub-Agent
+An automated career manager that acts as your personal job-seeking proxy.
+- **Profile Synthesizer:** Scrapes and merges your GitHub, LinkedIn, and base Resume into a master JSON profile using Gemini.
+- **Automated CV & Cover Letter Tailoring:** Uses Playwright to scrape a target job description URL, deeply analyzes the requirements, and instantly tailors your CV and Cover Letter to match.
+- **Dynamic Formatting:** Generates premium, ATS-friendly PDFs using headless HTML rendering, automatically pulling the target company's brand color (with luminance-safety checks) and naming the files dynamically (e.g., `glovo_cv.pdf`).
 
 ---
 
@@ -237,5 +240,6 @@ python orchestrator/telegram_orchestrator.py
 **⏳ Pending Modules:**
 - [ ] **YouTube Shorts Automation:** Playwright headless login support for YouTube Shorts stealth uploads.
 - [ ] **Forex Agent Expansion:** MT4/MT5 webhook integration and explicit TradingView alert parsing.
-- [ ] **Job Seeking Agent Complete Pipeline:** Automated IMAP resume matching and Selenium-based auto-apply scripts.
-- [ ] **Cloud VPS Daemon Optimization:** Deep optimization for persistent 24/7 autonomous heartbeat execution on low-tier cloud hardware (e.g., AWS EC2 micro).
+- [x] **Job Seeking Agent CV Tailoring:** Fully autonomous profile synthesis and ATS-optimized document generation.
+- [ ] **Job Seeking Agent Auto-Apply:** Selenium-based auto-apply scripts and IMAP interview matching.
+- [ ] **Cloud VPS Daemon Optimization:** Deep optimization for persistent 24/7 autonomous heartbeat execution on low-tier cloud hardware.

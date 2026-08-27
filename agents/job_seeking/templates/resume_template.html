@@ -3,19 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ candidate.name | default('Charles Were Angoye') }} - Technical Resume</title>
+    <title>{{ candidate.name | default('Candidate') }} - Resume</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --brand-accent: {{ dynamic_color | default('#0F52BA') }};
-            --text-main: #1A202C;
-            --text-secondary: #4A5568;
-            --border-color: #E2E8F0;
-            --bg-badge: #F7FAFC;
-        }
-
-        @page {
-            size: A4;
-            margin: 12mm 15mm;
+            --brand-accent: {{ dynamic_color | default('#2C4258') }};
+            --text-main: #374151;
+            --text-heading: #111827;
+            --text-muted: #6b7280;
+            --bg-color: #ffffff;
         }
 
         * {
@@ -23,11 +21,10 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-family: 'Inter', sans-serif;
             color: var(--text-main);
-            background-color: #FFFFFF;
-            line-height: 1.45;
-            font-size: 10pt;
+            background-color: var(--bg-color);
+            line-height: 1.5;
             margin: 0;
             padding: 0;
             -webkit-print-color-adjust: exact;
@@ -37,255 +34,176 @@
         .resume-container {
             max-width: 800px;
             margin: 0 auto;
-            background: #fff;
-            padding: 10px 0;
+            background: #ffffff;
+            padding: 40px 50px;
+            border-top: 8px solid var(--brand-accent);
         }
 
-        /* HEADER */
         header {
-            border-bottom: 2.5px solid var(--brand-accent);
-            padding-bottom: 12px;
-            margin-bottom: 16px;
+            text-align: center;
+            margin-bottom: 28px;
         }
 
         h1 {
-            color: var(--text-main);
-            font-size: 22pt;
-            font-weight: 800;
+            color: var(--text-heading);
+            font-size: 26pt;
+            font-weight: 700;
+            margin: 0 0 4px 0;
             letter-spacing: -0.5px;
-            margin: 0 0 6px 0;
             text-transform: uppercase;
         }
 
-        .contact-bar {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 14px;
-            font-size: 9pt;
-            color: var(--text-secondary);
-            font-weight: 500;
+        .subtitle {
+            font-size: 11.5pt;
+            font-weight: 600;
+            color: var(--brand-accent);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
-        .contact-item {
-            display: inline-flex;
-            align-items: center;
-        }
-
-        /* SECTIONS */
-        .section {
-            margin-bottom: 16px;
-            page-break-inside: avoid;
+        .contact-info {
+            font-size: 10pt;
+            color: var(--text-muted);
         }
 
         h2 {
-            color: var(--brand-accent);
-            font-size: 11pt;
+            color: var(--text-heading);
+            font-size: 12.5pt;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.8px;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 3px;
-            margin: 0 0 8px 0;
-        }
-
-        /* SUMMARY */
-        .summary-text {
-            font-size: 9.5pt;
-            color: #2D3748;
-            margin: 0;
-            line-height: 1.5;
-            text-align: justify;
-        }
-
-        /* SKILLS */
-        .skills-grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-        }
-
-        .skill-tag {
-            background-color: var(--bg-badge);
-            color: #2D3748;
-            border: 1px solid var(--border-color);
-            border-left: 3px solid var(--brand-accent);
-            padding: 3px 8px;
-            border-radius: 3px;
-            font-size: 8.5pt;
-            font-weight: 600;
-        }
-
-        /* EXPERIENCE */
-        .job-card {
+            letter-spacing: 0.5px;
+            margin-top: 24px;
             margin-bottom: 12px;
-            page-break-inside: avoid;
+            padding-bottom: 4px;
+            border-bottom: 2px solid var(--brand-accent);
         }
 
-        .job-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            margin-bottom: 3px;
+        p {
+            font-size: 10pt;
+            margin: 0 0 12px 0;
         }
 
-        .job-title {
-            font-size: 10.5pt;
-            font-weight: 700;
-            color: #1A202C;
+        .section {
+            margin-bottom: 22px;
         }
 
-        .job-company {
-            color: var(--brand-accent);
-            font-weight: 600;
+        .experience-item {
+            margin-bottom: 16px;
         }
-
-        .job-date {
-            font-size: 8.5pt;
-            font-weight: 600;
-            color: var(--text-secondary);
-        }
-
-        .job-bullets {
-            margin: 4px 0 0 0;
-            padding-left: 18px;
-        }
-
-        .job-bullets li {
-            font-size: 9pt;
-            color: #374151;
-            margin-bottom: 3px;
-            line-height: 1.4;
-        }
-
-        /* EDUCATION */
-        .edu-card {
+        
+        .experience-header {
             display: flex;
             justify-content: space-between;
             align-items: baseline;
             margin-bottom: 4px;
         }
 
-        .edu-degree {
-            font-size: 9.5pt;
-            font-weight: 700;
-            color: #1A202C;
-        }
-
-        .edu-school {
-            font-size: 9pt;
-            color: var(--text-secondary);
-        }
-
-        .edu-year {
-            font-size: 8.5pt;
+        .experience-header h3 {
+            font-size: 11pt;
             font-weight: 600;
-            color: var(--text-secondary);
+            color: var(--text-heading);
+            margin: 0;
         }
+
+        .experience-header .duration {
+            font-size: 10pt;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        ul {
+            margin: 0;
+            padding-left: 20px;
+            font-size: 10pt;
+        }
+
+        li {
+            margin-bottom: 5px;
+        }
+
+        li::marker {
+            color: var(--brand-accent);
+        }
+
+        .skills-list {
+            font-size: 10pt;
+        }
+        
+        .skills-list strong {
+            color: var(--text-heading);
+            font-weight: 600;
+        }
+
     </style>
 </head>
 <body>
     <div class="resume-container">
         <!-- HEADER -->
         <header>
-            <h1>{{ candidate.name | default('Charles Were Angoye') }}</h1>
-            <div class="contact-bar">
-                {% if candidate.location %}
-                <span class="contact-item">📍 {{ candidate.location }}</span>
-                {% endif %}
-                {% if candidate.email %}
-                <span class="contact-item">✉️ {{ candidate.email }}</span>
-                {% endif %}
-                {% if candidate.phone %}
-                <span class="contact-item">📞 {{ candidate.phone }}</span>
-                {% endif %}
+            <h1>{{ candidate.name | default('Candidate Name') }}</h1>
+            <div class="subtitle">{{ candidate.title | default('Software Engineer') }}</div>
+            <div class="contact-info">
+                {{ candidate.location | default('City, Country') }} &nbsp;|&nbsp; {{ candidate.phone | default('+1234567890') }} &nbsp;|&nbsp; {{ candidate.email | default('email@example.com') }}
             </div>
         </header>
 
         <!-- SUMMARY -->
         <section class="section">
             <h2>Professional Summary</h2>
-            <p class="summary-text">{{ candidate.summary | default('Full Stack Software Engineer specializing in scalable Python backend systems, autonomous agent architectures, and containerized cloud services.') }}</p>
-        </section>
+            <p>{{ candidate.summary | default('Detail-oriented and adaptable Software Engineering student specializing in Full-Stack Development. Proven experience collaborating in fast-paced environments.') }}</p>
+        </div>
 
-        <!-- TECHNICAL SKILLS -->
-        <section class="section">
-            <h2>Technical Skills & Core Competencies</h2>
-            <div class="skills-grid">
-                {% for skill in candidate.skills %}
-                <span class="skill-tag">{{ skill }}</span>
-                {% else %}
-                <span class="skill-tag">Python (AsyncIO / FastAPI / Django)</span>
-                <span class="skill-tag">Container Orchestration (Docker / Podman)</span>
-                <span class="skill-tag">Autonomous Agent Architectures</span>
-                <span class="skill-tag">PostgreSQL / Redis</span>
-                <span class="skill-tag">System Design & REST APIs</span>
-                <span class="skill-tag">Linux & Shell Automation</span>
-                {% endfor %}
+        <div class="section">
+            <h2>Technical Skills</h2>
+            <div class="skills-list">
+                <ul>
+                    <li><strong>Core Skills:</strong> {{ candidate.skills | join(', ') if candidate.skills else 'JavaScript, Python, React, Next.js, Node.js, SQL, Docker' }}</li>
+                </ul>
             </div>
-        </section>
+        </div>
 
-        <!-- EXPERIENCE -->
-        <section class="section">
+        <div class="section">
             <h2>Professional Experience</h2>
             {% for exp in candidate.experience %}
-            <div class="job-card">
-                <div class="job-header">
-                    <div>
-                        <span class="job-title">{{ exp.role }}</span>
-                        <span class="job-company">&mdash; {{ exp.company }}</span>
-                    </div>
-                    <span class="job-date">{{ exp.duration }}</span>
+            <div class="experience-item">
+                <div class="experience-header">
+                    <h3>{{ exp.role }} | {{ exp.company }}</h3>
+                    <span class="duration">{{ exp.duration }}</span>
                 </div>
-                <ul class="job-bullets">
-                    {% if exp.highlights and exp.highlights | length > 0 %}
-                        {% for highlight in exp.highlights %}
-                        <li>{{ highlight }}</li>
-                        {% endfor %}
-                    {% elif exp.description %}
-                        <li>{{ exp.description }}</li>
-                    {% else %}
-                        <li>Architected core services, streamlined CI/CD pipelines, and improved platform reliability.</li>
-                    {% endif %}
+                <ul>
+                    <li>{{ exp.description }}</li>
                 </ul>
             </div>
             {% else %}
-            <div class="job-card">
-                <div class="job-header">
-                    <div>
-                        <span class="job-title">Senior Software Engineer</span>
-                        <span class="job-company">&mdash; Technology Solutions</span>
-                    </div>
-                    <span class="job-date">2021 - Present</span>
+            <div class="experience-item">
+                <div class="experience-header">
+                    <h3>Backend Developer Intern | Infinity Innovations Co.</h3>
+                    <span class="duration">May 2026 - Present</span>
                 </div>
-                <ul class="job-bullets">
-                    <li>Designed and deployed containerized agent workflows, reducing pipeline processing latency by 35%.</li>
-                    <li>Built asynchronous RESTful APIs managing high-throughput data processing and transactional integrity.</li>
-                    <li>Led cross-functional engineering initiatives focused on microservice resilience and automated deployment.</li>
+                <ul>
+                    <li>Stepped up as the backend team lead, taking ownership of the development workflow by assigning daily tasks.</li>
+                    <li>Conducted rigorous code reviews and safely executed final merges into the main branch.</li>
                 </ul>
             </div>
             {% endfor %}
-        </section>
-
-        <!-- EDUCATION -->
-        <section class="section">
+        </div>
+        
+        <div class="section">
             <h2>Education</h2>
             {% for edu in candidate.education %}
-            <div class="edu-card">
-                <div>
-                    <span class="edu-degree">{{ edu.degree }}</span>
-                    <span class="edu-school">&bull; {{ edu.institution }}</span>
+            <div class="experience-item">
+                <div class="experience-header">
+                    <h3>{{ edu.degree }}</h3>
+                    <span class="duration">{{ edu.institution }} | {{ edu.year }}</span>
                 </div>
-                {% if edu.year %}
-                <span class="edu-year">{{ edu.year }}</span>
-                {% endif %}
             </div>
             {% else %}
-            <div class="edu-card">
-                <div>
-                    <span class="edu-degree">B.S. in Computer Science</span>
-                    <span class="edu-school">&bull; University of Technology</span>
+            <div class="experience-item">
+                <div class="experience-header">
+                    <h3>Bachelor of Science in Software Engineering</h3>
+                    <span class="duration">The African Leadership University (ALU) | Expected Jan 2028</span>
                 </div>
-                <span class="edu-year">2021</span>
             </div>
             {% endfor %}
         </section>
