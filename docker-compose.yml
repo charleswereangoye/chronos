@@ -9,8 +9,11 @@ services:
     env_file:
       - .env
     volumes:
-      # Mount the state directory so your X cookies and history persist between container restarts!
-      - ./agents/social_agent/state:/app/agents/social_agent/state
+      # Live development mounts
+      - ./agents:/app/agents
+      - ./shared:/app/shared
+      - ./orchestrator:/app/orchestrator
+      - ./assets:/app/assets
       - ./entrypoint.sh:/app/entrypoint.sh
       # Mount timezone files to sync container time with host laptop time
       - /etc/localtime:/etc/localtime:ro

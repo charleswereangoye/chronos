@@ -1,12 +1,16 @@
 import asyncio
 import os
 import sys
+import math
 import logging
-from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
+import uuid
+import httpx
+from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder,
     MessageHandler,
     CommandHandler,
+    CallbackQueryHandler,
     filters,
     ContextTypes,
     ConversationHandler,
@@ -17,6 +21,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from shared.config import TELEGRAM_BOT_TOKEN
 from agents.social_agent.social_coordinator import SocialAgentCoordinator
+from orchestrator.scheduler import AutonomousScheduler
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
@@ -24,6 +29,46 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 coordinator = SocialAgentCoordinator()
+scheduler = None
+
+async def safe_reply(message_target, text, reply_markup=None, parse_mode="Markdown", **kwargs):
+    target = message_target.message if hasattr(message_target, "message") and message_target.message else message_target
+    if not text:
+        return None
+        
+    chunk_size = 4000
+    if len(text) > chunk_size:
+        chunks = [text[i:i+chunk_size] for i in range(0, len(text), chunk_size)]
+        for i, chunk in enumerate(chunks):
+            m_markup = reply_markup if i == len(chunks) - 1 else None
+            try:
+                await target.reply_text(chunk, parse_mode=parse_mode, reply_markup=m_markup, **kwargs)
+            except Exception as err:
+                logger.warning(f"Failed to send chunk with parse_mode={parse_mode}: {err}. Retrying without markdown.")
+                await target.reply_text(chunk, parse_mode=None, reply_markup=m_markup, **kwargs)
+        return None
+
+    try:
+        return await target.reply_text(text, parse_mode=parse_mode, reply_markup=reply_markup, **kwargs)
+    except Exception as err:
+        logger.warning(f"Failed to send markdown reply: {err}. Falling back to plain text.")
+        return await target.reply_text(text, parse_mode=None, reply_markup=reply_markup, **kwargs)
+
+async def safe_reply_photo(message_target, photo, caption=None, reply_markup=None, parse_mode="Markdown", **kwargs):
+    target = message_target.message if hasattr(message_target, "message") and message_target.message else message_target
+    try:
+        return await target.reply_photo(photo=photo, caption=caption, parse_mode=parse_mode, reply_markup=reply_markup, **kwargs)
+    except Exception as err:
+        logger.warning(f"Failed to send photo with markdown: {err}. Falling back to plain caption.")
+        return await target.reply_photo(photo=photo, caption=caption, parse_mode=None, reply_markup=reply_markup, **kwargs)
+
+async def safe_reply_video(message_target, video, caption=None, reply_markup=None, parse_mode="Markdown", **kwargs):
+    target = message_target.message if hasattr(message_target, "message") and message_target.message else message_target
+    try:
+        return await target.reply_video(video=video, caption=caption, parse_mode=parse_mode, reply_markup=reply_markup, **kwargs)
+    except Exception as err:
+        logger.warning(f"Failed to send video with markdown: {err}. Falling back to plain caption.")
+        return await target.reply_video(video=video, caption=caption, parse_mode=None, reply_markup=reply_markup, **kwargs)
 
 # Define conversation states
 MAIN_MENU = 1
@@ -101,7 +146,6 @@ review_keyboard = [
 ]
 
 import subprocess
-from uuid import uuid4
 
 
 async def clip_command_start(update, context):
@@ -125,13 +169,14 @@ async def ask_clip_type(update, context):
         [
             ["1. ⬇️ Download Whole Video"],
             ["2. ✂️ Clip a Specific Scene"],
+            ["3. 🔍 Find Original Source (AI Search)"],
             ["0. 🚫 Cancel"],
         ],
         resize_keyboard=True,
         one_time_keyboard=True,
     )
     await update.message.reply_text(
-        "Do you want to download the whole video or clip a specific scene?",
+        "Do you want to download the whole video, clip a specific scene, or find the original source?",
         reply_markup=reply_markup,
     )
     return CLIP_TYPE
@@ -147,6 +192,8 @@ async def handle_clip_type(update, context):
             reply_markup=ReplyKeyboardRemove(),
         )
         return CLIP_START
+    elif text.startswith("3"):
+        return await execute_original_source_search(update, context)
     else:
         await update.message.reply_text(
             "🚫 Canceled clip download.",
@@ -168,20 +215,41 @@ async def receive_clip_end(update, context):
     return await execute_clip_download(update, context, is_clip=True)
 
 
+async def download_video_robust(url, output_path):
+    # Try TikTok API first for TikTok URLs since yt-dlp is broken
+    if "tiktok.com" in url:
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(f"https://www.tikwm.com/api/?url={url}", timeout=15)
+                data = resp.json()
+                if data.get("code") == 0 and "play" in data.get("data", {}):
+                    video_url = data["data"]["play"]
+                    cmd = ["curl", "-s", "-o", output_path, video_url]
+                    process = await asyncio.create_subprocess_exec(*cmd)
+                    await process.wait()
+                    if process.returncode == 0:
+                        return True, "", True # True, err, is_fallback
+        except Exception as e:
+            pass
+            
+    # Fallback to yt-dlp
+    cmd = [
+        os.path.join(os.path.dirname(sys.executable), "yt-dlp"),
+        "--merge-output-format", "mp4",
+        "-o", output_path,
+        url,
+    ]
+    process = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+    stdout, stderr = await process.communicate()
+    return process.returncode == 0, stderr.decode(), False
+
+
 async def execute_clip_download(update, context, is_clip):
     url = context.user_data.get("clip_url")
+    start_time = context.user_data.get("clip_start") if is_clip else None
+    end_time = context.user_data.get("clip_end") if is_clip else None
 
     if is_clip:
-        start_time = context.user_data.get("clip_start")
-        end_time = context.user_data.get("clip_end")
-        # Simple validation/formatting
-        start_time = "".join(c for c in start_time if c.isdigit() or c in ".:")
-        end_time = "".join(c for c in end_time if c.isdigit() or c in ".:")
-        if start_time.count(":") == 1:
-            start_time = "00:" + start_time
-        if end_time.count(":") == 1:
-            end_time = "00:" + end_time
-
         await update.message.reply_text(
             f"⏳ Clipping from {start_time} to {end_time}... Please wait.",
             reply_markup=ReplyKeyboardMarkup(main_menu_keyboard, resize_keyboard=True),
@@ -192,53 +260,220 @@ async def execute_clip_download(update, context, is_clip):
             reply_markup=ReplyKeyboardMarkup(main_menu_keyboard, resize_keyboard=True),
         )
 
-    target_dir = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)),
-        "assets",
-        "video_templates",
-        "general",
-    )
+    target_dir = os.path.join(os.getcwd(), "agents", "social_agent", "state", "output")
     os.makedirs(target_dir, exist_ok=True)
+    
+    file_id = str(uuid.uuid4())[:8]
+    output_path = os.path.join(target_dir, f"clip_{file_id}.mp4")
 
-    file_id = str(uuid4())[:8]
-    output_path = os.path.join(target_dir, f"clip_{file_id}.%(ext)s")
+    # If trimming is requested
+    if start_time and end_time:
+        success, stderr, is_fallback = await download_video_robust(url, output_path)
+        if success and is_fallback:
+            # We used tikwm (downloaded whole video), so we must trim it with ffmpeg now
+            temp_out = os.path.join(target_dir, f"temp_{file_id}.mp4")
+            os.rename(output_path, temp_out)
+            cmd_trim = ["ffmpeg", "-y", "-i", temp_out, "-ss", start_time, "-to", end_time, "-c:v", "libx264", "-c:a", "aac", output_path]
+            await (await asyncio.create_subprocess_exec(*cmd_trim, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL)).wait()
+            if os.path.exists(temp_out):
+                os.remove(temp_out)
+        elif not success and not is_fallback:
+            # Maybe yt-dlp needs download sections natively
+            cmd = [
+                os.path.join(os.path.dirname(sys.executable), "yt-dlp"),
+                "--merge-output-format", "mp4",
+                "--download-sections", f"*{start_time}-{end_time}",
+                "-o", output_path,
+                url,
+            ]
+            process = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+            stdout, err = await process.communicate()
+            success = process.returncode == 0
+            stderr = err.decode()
+    else:
+        success, stderr, is_fallback = await download_video_robust(url, output_path)
 
-    cmd = [
-        os.path.join(os.path.dirname(sys.executable), "yt-dlp"),
-        "-f",
-        "best[ext=mp4]/best",
-        "-o",
-        output_path,
-        url,
-    ]
-
-    if is_clip:
-        cmd.insert(1, "--download-sections")
-        cmd.insert(2, f"*{start_time}-{end_time}")
-
-    try:
-        process = await asyncio.create_subprocess_exec(
-            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+    if success:
+        await update.message.reply_text(
+            f"✅ Successfully clipped/downloaded video!"
         )
-        stdout, stderr = await process.communicate()
+        try:
+            with open(output_path, 'rb') as video_file:
+                await context.bot.send_video(
+                    chat_id=update.effective_chat.id, 
+                    video=video_file,
+                    read_timeout=180,
+                    write_timeout=180,
+                    connect_timeout=180
+                )
+        except Exception as e:
+            logger.error(f"Failed to send video: {e}")
+    else:
+        logger.error(f"Download error: {stderr}")
+        await update.message.reply_text(
+            "❌ Failed to clip/download video. Ensure the URL/timestamps are valid."
+        )
 
-        if process.returncode == 0:
-            await update.message.reply_text(
-                f"✅ Successfully saved to templates folder as clip_{file_id}.mp4!"
-            )
-        else:
-            logger.error(f"yt-dlp error: {stderr.decode()}")
-            await update.message.reply_text(
-                "❌ Failed to clip/download video. Ensure the URL/timestamps are valid."
-            )
-    except Exception as e:
-        logger.error(f"Clip command failed: {e}")
-        await update.message.reply_text("❌ Failed to run clipping tool.")
+    # Aggressive cleanup of standard clip downloads
+    if os.path.exists(output_path):
+        try:
+            os.remove(output_path)
+        except:
+            pass
 
     return MAIN_MENU
 
 
+async def execute_original_source_search(update, context):
+    async def safe_reply(msg, reply_markup=None):
+        for attempt in range(3):
+            try:
+                if reply_markup:
+                    await update.message.reply_text(msg, reply_markup=reply_markup)
+                else:
+                    await update.message.reply_text(msg)
+                return
+            except Exception as e:
+                logger.warning(f"Telegram reply failed (attempt {attempt+1}): {e}")
+                await asyncio.sleep(1)
+                
+    url = context.user_data.get("clip_url")
+    await safe_reply(
+        "⏳ Downloading video to analyze original source... Please wait.",
+        reply_markup=ReplyKeyboardMarkup(main_menu_keyboard, resize_keyboard=True),
+    )
+
+    target_dir = os.path.join(os.getcwd(), "agents", "social_agent", "state", "output")
+    os.makedirs(target_dir, exist_ok=True)
+    
+    file_id = str(uuid.uuid4())[:8]
+    temp_video_path = os.path.join(target_dir, f"temp_{file_id}.mp4")
+    temp_original_path = None
+    final_output_path = None
+    
+    # 1. Download video
+    success, stderr, _ = await download_video_robust(url, temp_video_path)
+    
+    try:
+        if not success:
+            logger.error(f"yt-dlp/fallback error: {stderr}")
+            await safe_reply("❌ Failed to download video for analysis.")
+            return MAIN_MENU
+            
+        # 2. Analyze with VisionAgent
+        await safe_reply("🤖 Analyzing frames with VisionAgent...")
+        
+        search_query = await coordinator.vision.identify_scene(temp_video_path)
+        if not search_query:
+            await safe_reply("❌ Failed to identify scene.")
+            return MAIN_MENU
+            
+        await safe_reply(f"🔍 Identified as: '{search_query}'. Downloading original...")
+        
+        # 3. Download original via ytsearch
+        # Append filters to search query to avoid YouTube Shorts and edited compilations
+        refined_query = f"{search_query} original scene 1080p -shorts"
+        
+        temp_original_path = os.path.join(target_dir, f"temp_original_{file_id}.mp4")
+        cmd_ytsearch = [
+            os.path.join(os.path.dirname(sys.executable), "yt-dlp"),
+            "--merge-output-format", "mp4",
+            "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+            "--match-filter", "duration >= 60 & duration <= 900",
+            "--extractor-args", "youtube:player-client=ios,tv",
+            "-i", "--max-downloads", "1",
+            "-o", temp_original_path,
+            f"ytsearch10:{refined_query}",
+        ]
+        
+        process_search = await asyncio.create_subprocess_exec(
+            *cmd_ytsearch, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+        )
+        s_stdout, s_stderr = await process_search.communicate()
+        
+        if os.path.exists(temp_original_path):
+            await safe_reply("✂️ Auto-syncing timestamps to perfectly match your clip...")
+            from shared.video_sync import find_clip_timestamps
+            
+            # 5. Find exact timestamps (run in thread to prevent blocking event loop)
+            start_sec, end_sec = await asyncio.to_thread(
+                find_clip_timestamps, temp_video_path, temp_original_path, target_dir
+            )
+            
+            if start_sec == -1:
+                await safe_reply("❌ The downloaded YouTube video didn't match the TikTok scene (Confidence threshold failed). Aborting.")
+                return MAIN_MENU
+            
+            # Format seconds to HH:MM:SS
+            def fmt_time(seconds):
+                h = math.floor(seconds / 3600)
+                m = math.floor((seconds % 3600) / 60)
+                s = seconds % 60
+                return f"{h:02d}:{m:02d}:{s:05.2f}"
+                
+            final_output_path = os.path.join(target_dir, f"original_clip_{file_id}.mp4")
+            cmd_clip = [
+                "ffmpeg", "-y", 
+                "-ss", fmt_time(start_sec), "-to", fmt_time(end_sec),
+                "-i", temp_original_path,
+                "-i", temp_video_path,
+                "-map", "0:v:0", "-map", "1:a:0?",
+                "-c:v", "libx264", "-c:a", "aac", 
+                "-shortest",
+                final_output_path
+            ]
+            
+            await (await asyncio.create_subprocess_exec(*cmd_clip, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL)).wait()
+            
+            # Automatically build the agent's brain by saving to templates directory
+            import re
+            import shutil
+            from shared.config import TEMPLATES_DIR
+            
+            os.makedirs(TEMPLATES_DIR, exist_ok=True)
+            slugified_name = re.sub(r'[^a-z0-9_]', '', search_query.lower().replace(' ', '_'))[:30]
+            template_path = os.path.join(TEMPLATES_DIR, f"{slugified_name}_{file_id}.mp4")
+            shutil.copy2(final_output_path, template_path)
+            
+            await safe_reply(f"✅ Successfully downloaded and perfectly synced!\n\n🧠 Saved to Agent Memory as: `{os.path.basename(template_path)}`")
+            
+            try:
+                with open(final_output_path, 'rb') as video_file:
+                    await context.bot.send_video(
+                        chat_id=update.effective_chat.id, 
+                        video=video_file,
+                        read_timeout=180,
+                        write_timeout=180,
+                        connect_timeout=180
+                    )
+            except Exception as e:
+                logger.error(f"Failed to send video: {e}")
+        else:
+            logger.error(f"yt-dlp search error: {s_stderr.decode()}")
+            await safe_reply("❌ Failed to download original source from YouTube.")
+            
+    except Exception as e:
+        logger.error(f"AI Search command failed: {type(e).__name__}: {e}")
+        try:
+            await update.message.reply_text("❌ Failed to run AI source search.")
+        except:
+            pass
+    finally:
+        # Aggressive cleanup of all temp and output files to prevent storage leaks
+        for f in [temp_video_path, temp_original_path, final_output_path]:
+            if 'f' in locals() and f and os.path.exists(f):
+                try:
+                    os.remove(f)
+                except:
+                    pass
+        
+    return MAIN_MENU
+
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global scheduler
+    if scheduler and update.effective_chat:
+        scheduler.set_target_chat_id(update.effective_chat.id)
     reply_markup = ReplyKeyboardMarkup(
         main_menu_keyboard, resize_keyboard=True, one_time_keyboard=False
     )
@@ -250,6 +485,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def main_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global scheduler
+    if scheduler and update.effective_chat:
+        scheduler.set_target_chat_id(update.effective_chat.id)
     text = update.message.text
 
     if text.startswith("0"):
@@ -313,8 +551,8 @@ async def social_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
             reply_markup = ReplyKeyboardMarkup(
                 review_keyboard, resize_keyboard=True, one_time_keyboard=False
             )
-            await update.message.reply_text(
-                msg, parse_mode="Markdown", reply_markup=reply_markup
+            await safe_reply(
+                update.message, msg, reply_markup=reply_markup
             )
             return REVIEW_POST
         except Exception as e:
@@ -331,8 +569,8 @@ async def social_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
             reply_markup = ReplyKeyboardMarkup(
                 review_keyboard, resize_keyboard=True, one_time_keyboard=False
             )
-            await update.message.reply_text(
-                msg, parse_mode="Markdown", reply_markup=reply_markup
+            await safe_reply(
+                update.message, msg, reply_markup=reply_markup
             )
             return REVIEW_POST
         except Exception as e:
@@ -349,8 +587,8 @@ async def social_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
             reply_markup = ReplyKeyboardMarkup(
                 review_keyboard, resize_keyboard=True, one_time_keyboard=False
             )
-            await update.message.reply_text(
-                msg, parse_mode="Markdown", reply_markup=reply_markup
+            await safe_reply(
+                update.message, msg, reply_markup=reply_markup
             )
             return REVIEW_POST
         except Exception as e:
@@ -368,8 +606,8 @@ async def social_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
                 reply_markup = ReplyKeyboardMarkup(
                     review_keyboard, resize_keyboard=True, one_time_keyboard=False
                 )
-                await update.message.reply_text(
-                    msg, parse_mode="Markdown", reply_markup=reply_markup
+                await safe_reply(
+                    update.message, msg, reply_markup=reply_markup
                 )
                 return REVIEW_POST
             else:
@@ -405,18 +643,18 @@ async def social_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
             )
             if "template_video" in draft and os.path.exists(draft["template_video"]):
                 with open(draft["template_video"], "rb") as vfile:
-                    await update.message.reply_video(
+                    await safe_reply_video(
+                        update.message,
                         video=vfile,
                         caption=msg,
-                        parse_mode="Markdown",
                         read_timeout=180,
                         write_timeout=180,
                         connect_timeout=180,
                         reply_markup=reply_markup,
                     )
             else:
-                await update.message.reply_text(
-                    msg, parse_mode="Markdown", reply_markup=reply_markup
+                await safe_reply(
+                    update.message, msg, reply_markup=reply_markup
                 )
             return REVIEW_POST
         except Exception as e:
@@ -621,8 +859,8 @@ async def review_post_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
             reply_markup = ReplyKeyboardMarkup(
                 review_keyboard, resize_keyboard=True, one_time_keyboard=False
             )
-            await update.message.reply_text(
-                msg, parse_mode="Markdown", reply_markup=reply_markup
+            await safe_reply(
+                update.message, msg, reply_markup=reply_markup
             )
             return REVIEW_POST
         except Exception as e:
@@ -667,8 +905,8 @@ async def edit_quote_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     reply_markup = ReplyKeyboardMarkup(
         review_keyboard, resize_keyboard=True, one_time_keyboard=False
     )
-    await update.message.reply_text(
-        msg, parse_mode="Markdown", reply_markup=reply_markup
+    await safe_reply(
+        update.message, msg, reply_markup=reply_markup
     )
     return REVIEW_POST
 
@@ -682,8 +920,8 @@ async def edit_x_post_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
     reply_markup = ReplyKeyboardMarkup(
         review_keyboard, resize_keyboard=True, one_time_keyboard=False
     )
-    await update.message.reply_text(
-        msg, parse_mode="Markdown", reply_markup=reply_markup
+    await safe_reply(
+        update.message, msg, reply_markup=reply_markup
     )
     return REVIEW_POST
 
@@ -697,8 +935,8 @@ async def edit_caption_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     reply_markup = ReplyKeyboardMarkup(
         review_keyboard, resize_keyboard=True, one_time_keyboard=False
     )
-    await update.message.reply_text(
-        msg, parse_mode="Markdown", reply_markup=reply_markup
+    await safe_reply(
+        update.message, msg, reply_markup=reply_markup
     )
     return REVIEW_POST
 
@@ -771,8 +1009,8 @@ async def complete_manual_text(update: Update, context: ContextTypes.DEFAULT_TYP
 
         msg = f"✅ *Manual Text Post Complete!*\n\n*X Post:*\n{full_x_post}\n\n*Meta Caption:*\n{full_meta_caption}"
         with open(image_path, "rb") as photo:
-            await update.message.reply_photo(
-                photo=photo, caption=msg, parse_mode="Markdown"
+            await safe_reply_photo(
+                update.message, photo=photo, caption=msg
             )
 
     except Exception as e:
@@ -838,8 +1076,8 @@ async def complete_manual_photo(update: Update, context: ContextTypes.DEFAULT_TY
 
         msg = f"✅ *Manual Photo Post Complete!*\n\n*X Post & Meta Caption:*\n{full_caption}"
         with open(rendered_image_path, "rb") as photo:
-            await update.message.reply_photo(
-                photo=photo, caption=msg, parse_mode="Markdown"
+            await safe_reply_photo(
+                update.message, photo=photo, caption=msg
             )
 
         if os.path.exists(photo_path):
@@ -925,10 +1163,10 @@ async def complete_manual_video(update: Update, context: ContextTypes.DEFAULT_TY
         )
 
         with open(draft["template_video"], "rb") as vfile:
-            await update.message.reply_video(
+            await safe_reply_video(
+                update.message,
                 video=vfile,
                 caption=msg,
-                parse_mode="Markdown",
                 read_timeout=180,
                 write_timeout=180,
                 connect_timeout=180,
@@ -1102,40 +1340,19 @@ async def receive_cover_letter_url(update: Update, context: ContextTypes.DEFAULT
     try:
         from agents.job_seeking.cover_letter_generator import CoverLetterGenerator
         from agents.job_seeking.tailor_engine import TailorEngine
-        import uuid
-        import os
 
         generator = CoverLetterGenerator()
-        cover_letter_text = await generator.generate(url)
+        cover_letter_text, candidate_data = await generator.generate_text(url)
 
-        # Convert text to basic HTML
-        html_body = cover_letter_text.replace("\n", "<br>")
-
-        html_content = f"""
-        <html>
-        <head>
-            <style>
-                @page {{ margin: 1in; }}
-                body {{ font-family: 'Arial', sans-serif; line-height: 1.15; color: #000; font-size: 11pt; }}
-                p {{ margin-bottom: 12pt; }}
-            </style>
-        </head>
-        <body>
-            {html_body}
-        </body>
-        </html>
-        """
-
+        # Render and send professional PDF letterhead
         engine = TailorEngine()
-        pdf_filename = f"cover_letter_{uuid.uuid4().hex[:8]}.pdf"
-        output_path = os.path.join(engine.output_dir, pdf_filename)
+        color_hex = await engine.get_brand_color(url) if url.startswith("http") else "#0F52BA"
+        pdf_path = await generator.generate_pdf(cover_letter_text, candidate_data, color_hex=color_hex)
 
-        await engine.generate_pdf(html_content, output_path)
-
-        with open(output_path, "rb") as pdf_file:
+        with open(pdf_path, "rb") as pdf_file:
             await update.message.reply_document(
                 document=pdf_file,
-                caption=f"✅ Here is your tailored Cover Letter for {url}.",
+                caption=f"✅ Here is your tailored Cover Letter PDF for {url}.",
             )
     except Exception as e:
         logger.error(f"Failed to generate cover letter: {e}")
@@ -1163,7 +1380,7 @@ async def receive_interview_prep_url(
 
         bot = InterviewPrepBot()
         prep_guide = await bot.generate_prep_guide(url)
-        await update.message.reply_text(prep_guide, parse_mode="Markdown")
+        await safe_reply(update.message, prep_guide)
     except Exception as e:
         logger.error(f"Failed to generate interview prep: {e}")
         await update.message.reply_text(f"❌ Failed to generate interview prep: {e}")
@@ -1232,10 +1449,78 @@ async def receive_cv_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return JOB_SEEKING_MENU
 
 
+async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    data = query.data
+    
+    if data == "auto_publish_social":
+        draft = context.bot_data.get("last_auto_draft")
+        if not draft:
+            await query.edit_message_text("⚠️ Draft expired or not found. Please generate a new one from the menu.")
+            return
+            
+        await query.edit_message_text("⏳ Rendering graphic and publishing to X and Meta...")
+        try:
+            image_path = await coordinator.publisher.render_tweet_image(
+                draft["quote"], filename="auto_daily_quote.png"
+            )
+            x_res = await coordinator.publisher.post_to_x_stealth(
+                draft["x_post_text"], image_path=image_path
+            )
+            meta_res = coordinator.publisher.post_to_meta(
+                caption=draft["caption"], image_path=image_path
+            )
+            await query.edit_message_text(
+                f"✅ <b>Published Successfully!</b>\n\n"
+                f"• X (Twitter): {'✅ Live' if x_res else '⚠️ Check logs'}\n"
+                f"• Meta (IG/FB): {'✅ Live' if meta_res else '⚠️ Check logs'}",
+                parse_mode="HTML"
+            )
+        except Exception as e:
+            logger.error(f"Failed to auto-publish draft: {e}")
+            await query.edit_message_text(f"❌ Failed to publish: {e}")
+            
+    elif data == "auto_regen_social":
+        await query.edit_message_text("⏳ Regenerating daily meme draft...")
+        try:
+            new_draft = await coordinator.generate_persona_draft()
+            if not new_draft:
+                await query.edit_message_text("❌ Failed to generate new draft.")
+                return
+                
+            context.bot_data["last_auto_draft"] = new_draft
+            keyboard = [
+                [
+                    InlineKeyboardButton("🚀 1-Tap Publish to X & Meta", callback_data="auto_publish_social"),
+                    InlineKeyboardButton("🔄 Regenerate", callback_data="auto_regen_social")
+                ]
+            ]
+            msg = (
+                "🎭 <b>CHRONOS DAILY MEME DRAFT READY</b>\n\n"
+                f"<b>Meme Quote:</b>\n{new_draft['quote']}\n\n"
+                f"<b>X Post:</b>\n{new_draft['x_post_text']}\n\n"
+                f"<b>Meta Caption:</b>\n{new_draft['caption']}"
+            )
+            await query.edit_message_text(
+                msg,
+                parse_mode="HTML",
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+        except Exception as e:
+            await query.edit_message_text(f"❌ Failed to regenerate: {e}")
+
+
 def main():
+    global scheduler
     if not TELEGRAM_BOT_TOKEN:
         print("TELEGRAM_BOT_TOKEN is not set in .env!")
         return
+
+    async def post_init(application):
+        global scheduler
+        scheduler = AutonomousScheduler(application)
+        asyncio.create_task(scheduler.start_loop())
 
     # Set long timeouts so image rendering and posting doesn't time out the bot
     application = (
@@ -1245,6 +1530,7 @@ def main():
         .write_timeout(300)
         .connect_timeout(300)
         .pool_timeout(300)
+        .post_init(post_init)
         .build()
     )
 
@@ -1343,6 +1629,7 @@ def main():
         allow_reentry=True,
     )
 
+    application.add_handler(CallbackQueryHandler(handle_callback_query))
     application.add_handler(conv_handler)
 
     async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:

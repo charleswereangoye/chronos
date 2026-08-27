@@ -1,6 +1,5 @@
-import json
-from shared.config import get_gemini_client_and_model
 from shared.logger import get_logger
+from shared.llm import generate_json_with_failover
 
 logger = get_logger("CriticAgent")
 
@@ -10,54 +9,47 @@ class CriticAgent:
 
     def evaluate_content(self, content: dict, persona_profile: dict) -> dict:
         """
-        Evaluates the generated content against strict criteria.
+        Evaluates the generated meme content against strict quality and humor criteria.
         Returns a dict: {"pass": True/False, "feedback": "string explaining why"}
         """
-        logger.info("Evaluating generated content...")
+        logger.info("Evaluating meme content quality...")
         
         prompt = f"""
-        You are a harsh but fair Social Media Critic. 
-        Your job is to evaluate a generated social media post based on the following criteria:
-        1. Does it sound like a real, authentic human trader? (No AI slang like 'tapestry', 'navigate', 'profound').
-        2. Does it perfectly match the emotional filter: {persona_profile.get('emotional_filter', 'None')}?
-        3. Is it actually engaging or funny, without being overly cringy?
-        4. Does the text make sense contextually?
+You are a viral Social Media Editor and Meme Critic for trader comedy accounts.
+Your job is to review this generated trader meme post:
+
+Quote: {content.get('image_quote')}
+X Post: {content.get('x_post_text')}
+Meta Caption: {content.get('meta_caption')}
+Target Meme Archetype: {persona_profile.get('emotional_filter', 'MEME')}
+
+CRITICAL EVALUATION CRITERIA:
+1. IS IT ACTUALLY A MEME / HUMOROUS?
+   - REJECT (FAIL) if it sounds like serious advice, guru preaching, or motivational quotes.
+   - PASS if it's funny, sarcastic, a relatable POV, or mocks trading struggles.
+2. ZERO AI CLICHÉS:
+   - REJECT if it contains words like 'tapestry', 'navigate', 'profound', 'discipline requires', 'beacon'.
+3. NATURAL HUMAN WRITING:
+   - Does it sound like an authentic day trader texting in a chat or posting on X?
+
+Output ONLY a JSON object:
+{{
+    "pass": true or false,
+    "feedback": "Short specific feedback if failed (e.g., 'Too preachy, make it a funny POV meme instead')"
+}}
+"""
         
-        Generated Content:
-        Quote: {content.get('image_quote')}
-        X Post: {content.get('x_post_text')}
-        Meta Caption: {content.get('meta_caption')}
-        
-        Evaluate the content. If it is good to post, return PASS. If it is too robotic, cringy, or fails the emotional filter, return FAIL and provide brief feedback on what needs to change.
-        
-        Output ONLY a JSON object with this exact structure:
-        {{
-            "pass": true or false,
-            "feedback": "string"
-        }}
-        """
-        
-        for attempt in [1, 2]:
-            try:
-                client, model_name = get_gemini_client_and_model(attempt)
-                response = client.models.generate_content(
-                    model=model_name,
-                    contents=prompt
-                )
-                
-                raw_text = response.text.strip()
-                if raw_text.startswith("```"):
-                    raw_text = raw_text.replace("```json", "").replace("```", "").strip()
-                
-                result = json.loads(raw_text)
-                if result.get("pass"):
-                    logger.info("Critic Agent: Content PASSED.")
-                else:
-                    logger.warning(f"Critic Agent: Content FAILED. Feedback: {result.get('feedback')}")
-                return result
-            except Exception as e:
-                logger.warning(f"Critic evaluation failed on attempt {attempt}: {e}")
-                
-        # If evaluation fails, default to pass to avoid breaking the pipeline
-        logger.warning("Critic failed to parse evaluation, defaulting to PASS.")
-        return {"pass": True, "feedback": ""}
+        try:
+            result = generate_json_with_failover(
+                prompt_text=prompt,
+                max_attempts=2,
+                default_fallback={"pass": True, "feedback": ""}
+            )
+            if result.get("pass"):
+                logger.info("Critic Agent: Content PASSED (Valid meme format).")
+            else:
+                logger.warning(f"Critic Agent: Content FAILED. Feedback: {result.get('feedback')}")
+            return result
+        except Exception as e:
+            logger.warning(f"Critic evaluation encountered exception: {e}, defaulting to PASS.")
+            return {"pass": True, "feedback": ""}

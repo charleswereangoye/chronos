@@ -1,6 +1,6 @@
 import feedparser
-from shared.config import get_gemini_client_and_model
 from shared.logger import get_logger
+from shared.llm import generate_json_with_failover
 
 logger = get_logger("MonitorAgent")
 
@@ -20,13 +20,17 @@ class MonitorAgent:
         ]
         news_snippets = []
         try:
+            feedparser.USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             for url in rss_feeds:
-                feed = feedparser.parse(url)
-                for entry in feed.entries[:5]: # Top 5 latest
-                    title = getattr(entry, 'title', '')
-                    summary = getattr(entry, 'summary', '')
-                    if title or summary:
-                        news_snippets.append(f"Title: {title}\nSummary: {summary}")
+                try:
+                    feed = feedparser.parse(url)
+                    for entry in feed.entries[:5]: # Top 5 latest
+                        title = getattr(entry, 'title', '')
+                        summary = getattr(entry, 'summary', '')
+                        if title or summary:
+                            news_snippets.append(f"Title: {title}\nSummary: {summary}")
+                except Exception as feed_err:
+                    logger.warning(f"Failed to parse monitor feed {url}: {feed_err}")
         except Exception as e:
             logger.error(f"Monitor RSS fetch failed: {e}")
             return {"is_breaking": False, "event_summary": ""}
@@ -50,17 +54,11 @@ class MonitorAgent:
         """
         
         try:
-            client, model_name = get_gemini_client_and_model(1)
-            response = client.models.generate_content(
-                model=model_name,
-                contents=prompt
+            result = generate_json_with_failover(
+                prompt_text=prompt,
+                max_attempts=2,
+                default_fallback={"is_breaking": False, "event_summary": ""}
             )
-            import json
-            raw_text = response.text.strip()
-            if raw_text.startswith("```"):
-                raw_text = raw_text.replace("```json", "").replace("```", "").strip()
-            
-            result = json.loads(raw_text)
             if result.get("is_breaking"):
                 logger.warning(f"BREAKING NEWS DETECTED: {result.get('event_summary')}")
             else:

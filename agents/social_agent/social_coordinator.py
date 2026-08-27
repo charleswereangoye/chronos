@@ -14,6 +14,7 @@ from agents.social_agent.news_agent import NewsAgent
 from agents.social_agent.serious_agent import SeriousAgent
 from agents.social_agent.content_router import ContentRouter
 from agents.social_agent.video_meme_agent import VideoMemeAgent
+from agents.social_agent.vision_agent import VisionAgent
 
 logger = get_logger("SocialAgentCoordinator")
 
@@ -31,6 +32,7 @@ class SocialAgentCoordinator:
         self.serious_agent = SeriousAgent()
         self.router = ContentRouter()
         self.video_agent = VideoMemeAgent()
+        self.vision = VisionAgent()
         self.memory = MemoryManager()
         self.dry_run = DRY_RUN
 

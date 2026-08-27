@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class TailorEngine:
     def __init__(self):
         self.template_dir = os.path.join(os.path.dirname(__file__), 'templates')
-        self.output_dir = os.path.join(os.path.dirname(__file__), 'output')
+        self.output_dir = os.path.join(os.path.dirname(__file__), 'state', 'output')
         os.makedirs(self.output_dir, exist_ok=True)
         
         self.jinja_env = Environment(loader=FileSystemLoader(self.template_dir))
