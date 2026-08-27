@@ -1,87 +1,72 @@
-import json
-from shared.config import get_gemini_client_and_model
+import random
 from shared.logger import get_logger
 from shared.memory import MemoryManager
+from shared.llm import generate_json_with_failover
 
 logger = get_logger("StrategistAgent")
-
-def generate_content_with_failover(prompt_text):
-    for attempt in [1, 2]:
-        try:
-            client, model_name = get_gemini_client_and_model(attempt)
-            logger.info(f"Generating content using Attempt {attempt}: {model_name}")
-            
-            response = client.models.generate_content(
-                model=model_name,
-                contents=prompt_text
-            )
-            return response
-        except Exception as e:
-            logger.warning(f"Attempt {attempt} failed with error: {e}")
-            if attempt == 2:
-                logger.error("All Gemini model/key attempts exhausted.")
-                raise e
 
 class StrategistAgent:
     def __init__(self):
         self.memory = MemoryManager()
         
-    def generate_persona(self, research_data: dict, analytics_data: dict) -> dict:
-        logger.info("Generating dynamic persona based on research and analytics...")
-        
-        # Sort formats by score to determine weights
-        format_scores = analytics_data.get('format_scores', {})
-        best_format = analytics_data.get('best_performing_format', 'RELATABLE_MEME_TEXT')
+    def generate_persona(self, research_data: dict = None, analytics_data: dict = None) -> dict:
+        logger.info("Selecting dynamic comedic meme strategy for trader persona...")
         
         history = self.memory.load_history()
         last_filter = history.get("last_emotional_filter", "None")
         
+        meme_archetypes = [
+            "SARCASTIC_REALIST",    # Sharp, witty, roasting retail mistakes with comedy
+            "EXHAUSTED_DAYTRADER",  # Sleep-deprived, coffee-fueled, staring at sideways candles
+            "CHART_ADDICT",        # Drawing 40 Fibonacci lines and checking TradingView on dates
+            "WICK_VICTIM",         # The tragic comedy of moving SL to breakeven and getting wicked
+            "GOLD_DEGEN"           # The adrenaline and panic of trading XAUUSD 50-pip candles
+        ]
+        
+        available = [a for a in meme_archetypes if a != last_filter]
+        chosen_archetype = random.choice(available if available else meme_archetypes)
+        
+        meme_formats = [
+            "POV_MEME",             # "POV: You finally closed your losing trade..."
+            "INTERNAL_MONOLOGUE",   # "Me analyzing 4H timeframe vs Me entering on 15s chart"
+            "RELATABLE_TRUTH",      # Short, hilarious observation every trader knows
+            "DAILY_ROUTINE_ROAST"   # 3-step schedule of pain & coffee
+        ]
+        chosen_format = random.choice(meme_formats)
+
         prompt = f"""
-        Analyze today's market climate based on the following research:
-        Macro News: {research_data['macro_news']}
-        Retail Sentiment: {research_data['retail_sentiment']}
-        
-        And consider these historical analytics format scores: {format_scores}
-        Currently, the best performing format is: {best_format}
-        
-        Dynamically generate a strategy that best responds to this climate and leverages the analytics.
-        Instead of rigid corporate roles, select ONE Human Emotional Filter from the following 5 options:
-        1. FRIENDLY_MENTOR: Warm, supportive, encouraging, written like a text to a friend.
-        2. SARCASTIC_REALIST: Witty, sharp, calling out bad trading habits with humor.
-        3. GROUNDED_PHILOSOPHER: Serious, deep, psychological, focused on discipline.
-        4. EXHAUSTED_TRADER: Casual, tired, relatable, commenting on choppy or dead markets.
-        5. HYPED_ANALYST: Energetic, focused on clean setups and momentum.
-        
-        CRITICAL VARIETY INSTRUCTION:
-        The previously used emotional filter was: {last_filter}. 
-        Unless the market climate strictly demands repeating the exact same filter, you MUST select a DIFFERENT emotional filter to maintain audience engagement. Do not fall into a loop of repeating the same filter.
-        
-        Also explicitly select a 'post_format' from the following:
-        - RELATABLE_MEME_TEXT
-        - SARCASM_HOT_TAKE
-        - ENGAGEMENT_QUESTION
-        - RAW_FRIEND_ADVICE
-        
-        Output ONLY a JSON object with the following keys, no markdown wrappers:
-        - "emotional_filter"
-        - "post_format"
-        - "core_theme"
-        - "narrative_angle"
-        """
-        
+You are the creative strategist for a viral, meme-first social media brand run by an authentic day trader.
+Your goal is to pick today's comedic angle for a purely MEME-BASED trading post.
+
+Selected Comedic Archetype: {chosen_archetype}
+Selected Meme Format: {chosen_format}
+
+Previous filter used: {last_filter}
+
+Market Context (flavor only, do not make this a serious report):
+{research_data.get('macro_news', 'Normal market volatility') if research_data else 'Normal market volatility'}
+
+Generate a short JSON strategy blueprint with:
+1. "emotional_filter": "{chosen_archetype}"
+2. "post_format": "{chosen_format}"
+3. "core_theme": "A specific hilarious trader scenario (e.g., getting wicked out by 0.5 pips, moving SL to breakeven too early, revenge trading at 3 PM, staring at flat Asian session)."
+4. "narrative_angle": "The punchline or comic angle that makes traders immediately laugh and say 'that's so me'."
+
+Output ONLY valid JSON.
+"""
+        fallback = {
+            "emotional_filter": chosen_archetype,
+            "post_format": chosen_format,
+            "core_theme": "Moving stop loss to breakeven 30 seconds before a massive expansion",
+            "narrative_angle": "The universal pain of watching your breakeven get tapped to the exact pip before price flies to TP."
+        }
+
         try:
-            response = generate_content_with_failover(prompt)
-            raw_text = response.text.strip()
-            if raw_text.startswith("```"):
-                raw_text = raw_text.replace("```json", "").replace("```", "").strip()
-            
-            persona = json.loads(raw_text)
-            return persona
+            return generate_json_with_failover(
+                prompt_text=prompt,
+                max_attempts=2,
+                default_fallback=fallback
+            )
         except Exception as e:
-            logger.error(f"Failed to generate dynamic persona: {e}")
-            return {
-                "emotional_filter": "GROUNDED_PHILOSOPHER",
-                "post_format": "RAW_FRIEND_ADVICE",
-                "core_theme": "Avoiding retail liquidity traps during high inflation news",
-                "narrative_angle": "Focus on capital preservation over quick profits"
-            }
+            logger.error(f"Failed to generate meme strategy: {e}")
+            return fallback

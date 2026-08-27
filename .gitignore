@@ -1,9 +1,7 @@
 # Environments
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
 
 # Node
 node_modules/
@@ -20,30 +18,37 @@ ENV/
 env.bak/
 venv.bak/
 
-# macOS
+# macOS / Linux
 .DS_Store
-
-# IDEs and Editors
-.idea/
-.vscode/
 *.swp
 *.swo
+.idea/
+.vscode/
 
-# Session & State Data (Preventing Leakage of API Keys and Cookies)
+# Session & State Data (Preventing Leakage of Keys, Profiles, Cache, and Cookies)
 agents/social_agent/state/
+agents/job_seeking/state/
 *state.json
+scheduler_state.json
 cookies.json
 history.json
 analytics.json
+base_profile_cache.json
 
-# Generated Media Outputs (Preventing Repo Bloat)
+# Generated Media & Document Outputs (Preventing Repo Bloat & Leaks)
 output/
-social_agent/output/
+*/output/
+state/output/
 *.mp4
 *.webm
+*.pdf
 *_quote.png
 daily_news.png
 video_header.png
+temp_*
+*.tmp
+*.tmp.*
+.tmp_*
 
 # Logs
 *.log

@@ -36,7 +36,8 @@ class PublisherAgent:
         rendered_html = rendered_html.replace("{{ timestamp }}", current_time)
         rendered_html = rendered_html.replace("8:00 AM · {{ date }}", current_time)
         
-        temp_html_path = TEMPLATES_DIR / "temp_render.html"
+        import uuid
+        temp_html_path = TEMPLATES_DIR / f"temp_render_{uuid.uuid4().hex}.html"
         with open(temp_html_path, "w", encoding="utf-8") as f:
             f.write(rendered_html)
             
@@ -87,7 +88,8 @@ class PublisherAgent:
         rendered_html = rendered_html.replace("{{ image_src }}", abs_photo_path)
         rendered_html = rendered_html.replace("{{ timestamp }}", current_time)
         
-        temp_html_path = TEMPLATES_DIR / "temp_custom_photo_render.html"
+        import uuid
+        temp_html_path = TEMPLATES_DIR / f"temp_custom_photo_{uuid.uuid4().hex}.html"
         with open(temp_html_path, "w", encoding="utf-8") as f:
             f.write(rendered_html)
             
@@ -124,7 +126,8 @@ class PublisherAgent:
         rendered_html = html_content.replace("{{ news_content }}", news_content)
         rendered_html = rendered_html.replace("{{ timestamp }}", current_time)
         
-        temp_html_path = TEMPLATES_DIR / "temp_news_render.html"
+        import uuid
+        temp_html_path = TEMPLATES_DIR / f"temp_news_{uuid.uuid4().hex}.html"
         with open(temp_html_path, "w", encoding="utf-8") as f:
             f.write(rendered_html)
             

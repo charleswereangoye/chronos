@@ -31,7 +31,7 @@
             print-color-adjust: exact;
         }
 
-        .container {
+        .resume-container {
             max-width: 800px;
             margin: 0 auto;
             background: #ffffff;
@@ -138,7 +138,8 @@
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="resume-container">
+        <!-- HEADER -->
         <header>
             <h1>{{ candidate.name | default('Candidate Name') }}</h1>
             <div class="subtitle">{{ candidate.title | default('Software Engineer') }}</div>
@@ -147,7 +148,8 @@
             </div>
         </header>
 
-        <div class="section">
+        <!-- SUMMARY -->
+        <section class="section">
             <h2>Professional Summary</h2>
             <p>{{ candidate.summary | default('Detail-oriented and adaptable Software Engineering student specializing in Full-Stack Development. Proven experience collaborating in fast-paced environments.') }}</p>
         </div>
@@ -204,7 +206,7 @@
                 </div>
             </div>
             {% endfor %}
-        </div>
+        </section>
     </div>
 </body>
 </html>

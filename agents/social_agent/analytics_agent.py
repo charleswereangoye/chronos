@@ -1,6 +1,5 @@
 import os
 import json
-# pyrefly: ignore [missing-import]
 from twikit import Client
 from shared.config import STATE_DIR, STATE_FILE_PATH, X_USERNAME
 from shared.logger import get_logger
@@ -41,27 +40,29 @@ class AnalyticsAgent:
             
         current_engagement = 0
         try:
-            twikit_client = Client('en-US')
-            with open(STATE_FILE_PATH, "r", encoding="utf-8") as f:
-                cookie_data = json.load(f)
-            cookies_list = cookie_data.get("cookies", cookie_data) if isinstance(cookie_data, dict) else cookie_data
-            cookies_dict = {c['name']: c['value'] for c in cookies_list}
-            twikit_client.set_cookies(cookies_dict)
-            
-            if X_USERNAME:
-                user = await twikit_client.get_user_by_screen_name(X_USERNAME)
-                tweets = await user.get_tweets("Tweets", count=5)
-                if tweets:
-                    likes = sum([int(getattr(t, 'favorite_count', 0) or 0) for t in tweets])
-                    retweets = sum([int(getattr(t, 'retweet_count', 0) or 0) for t in tweets])
-                    replies = sum([int(getattr(t, 'reply_count', 0) or 0) for t in tweets])
-                    views = sum([int(getattr(t, 'view_count', 0) or 0) for t in tweets])
-                    logger.info(f"Recent X engagement - Likes: {likes}, RTs: {retweets}, Replies: {replies}, Views: {views}")
+            if os.path.exists(STATE_FILE_PATH):
+                twikit_client = Client('en-US')
+                with open(STATE_FILE_PATH, "r", encoding="utf-8") as f:
+                    cookie_data = json.load(f)
+                cookies_list = cookie_data.get("cookies", cookie_data) if isinstance(cookie_data, dict) else cookie_data
+                cookies_dict = {c['name']: c['value'] for c in cookies_list if 'name' in c and 'value' in c}
+                if cookies_dict:
+                    twikit_client.set_cookies(cookies_dict)
                     
-                    current_engagement = round((likes + retweets * 2 + replies * 3) / len(tweets), 2)
-                    analytics_data["avg_engagement_rate"] = current_engagement
+                    if X_USERNAME:
+                        user = await twikit_client.get_user_by_screen_name(X_USERNAME)
+                        tweets = await user.get_tweets("Tweets", count=5)
+                        if tweets:
+                            likes = sum([int(getattr(t, 'favorite_count', 0) or 0) for t in tweets])
+                            retweets = sum([int(getattr(t, 'retweet_count', 0) or 0) for t in tweets])
+                            replies = sum([int(getattr(t, 'reply_count', 0) or 0) for t in tweets])
+                            views = sum([int(getattr(t, 'view_count', 0) or 0) for t in tweets])
+                            logger.info(f"Recent X engagement - Likes: {likes}, RTs: {retweets}, Replies: {replies}, Views: {views}")
+                            
+                            current_engagement = round((likes + retweets * 2 + replies * 3) / len(tweets), 2)
+                            analytics_data["avg_engagement_rate"] = current_engagement
         except Exception as e:
-            logger.error(f"Failed to fetch live analytics via Twikit: {e}")
+            logger.warning(f"Failed to fetch live analytics via Twikit: {e}. Keeping existing data.")
             
         # A/B Testing Logic: Update scores based on the last used filter
         try:
@@ -70,14 +71,12 @@ class AnalyticsAgent:
             history = mem.load_history()
             last_filter = history.get("last_emotional_filter", "None")
             
-            if last_filter and last_filter in analytics_data["format_scores"]:
-                # If current engagement is good (> 10), reward the filter. Otherwise penalize slightly.
+            if last_filter and last_filter in analytics_data.get("format_scores", {}):
                 if current_engagement > 10:
                     analytics_data["format_scores"][last_filter] += 2
                 else:
                     analytics_data["format_scores"][last_filter] = max(10, analytics_data["format_scores"][last_filter] - 1)
                     
-                # Find new best performing format
                 best_format = max(analytics_data["format_scores"], key=analytics_data["format_scores"].get)
                 analytics_data["best_performing_format"] = best_format
                 logger.info(f"Updated A/B scores. Best format is now: {best_format}")
@@ -85,9 +84,12 @@ class AnalyticsAgent:
             logger.error(f"Failed to run A/B testing logic: {e}")
             
         try:
-            os.makedirs(os.path.dirname(self.analytics_file), exist_ok=True)
-            with open(self.analytics_file, "w", encoding="utf-8") as f:
+            target_dir = os.path.dirname(self.analytics_file)
+            os.makedirs(target_dir, exist_ok=True)
+            temp_file = os.path.join(target_dir, f".tmp_analytics_{os.getpid()}.json")
+            with open(temp_file, "w", encoding="utf-8") as f:
                 json.dump(analytics_data, f, indent=4)
+            os.replace(temp_file, self.analytics_file)
         except Exception as e:
             logger.error(f"Failed to save analytics.json: {e}")
             

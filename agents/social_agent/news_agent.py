@@ -1,6 +1,5 @@
-import json
-from shared.config import get_gemini_client_and_model
 from shared.logger import get_logger
+from shared.llm import generate_json_with_failover
 
 logger = get_logger("NewsAgent")
 
@@ -35,29 +34,21 @@ class NewsAgent:
         }}
         """
 
-        for attempt in range(1, 4):
-            try:
-                logger.info(f"Generating news content using Attempt {attempt}")
-                client, model_name = get_gemini_client_and_model(attempt)
-                
-                response = client.models.generate_content(
-                    model=model_name,
-                    contents=prompt
-                )
-                
-                text = response.text.strip()
-                if text.startswith("```json"):
-                    text = text[7:-3].strip()
-                elif text.startswith("```"):
-                    text = text[3:-3].strip()
-                    
-                content = json.loads(text)
-                return content
-            except Exception as e:
-                logger.error(f"News generation attempt {attempt} failed: {e}")
-                
-        return {
-            "news_content": "Major market updates are happening today. Stay tuned for details.",
-            "x_post_text": "Major market updates are happening today. #news #markets",
-            "meta_caption": "Major market updates are happening today. 📊📉 #news #finance #markets"
+        fallback = {
+            "news_content": "High Impact Market Update",
+            "x_post_text": "High Impact Market Update. Keep risk tightly managed today. #Forex #Gold #Economy",
+            "meta_caption": "High impact market updates today. Protect your capital and manage your risk. 📊📉 #news #finance #markets"
         }
+
+        try:
+            content = generate_json_with_failover(
+                prompt_text=prompt,
+                max_attempts=3,
+                default_fallback=fallback
+            )
+            if "x_post_text" not in content and "news_content" in content:
+                content["x_post_text"] = f"{content['news_content']} #news #markets"
+            return content
+        except Exception as e:
+            logger.error(f"News generation failed: {e}")
+            return fallback
