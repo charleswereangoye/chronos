@@ -67,3 +67,9 @@ client_secret.json
 cookies.json
 oauth*.json
 auth.json
+
+# Personal Guides & Internal Notes
+*personal*
+*.guide.md
+docs/
+
