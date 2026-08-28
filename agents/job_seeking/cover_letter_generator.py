@@ -73,7 +73,30 @@ class CoverLetterGenerator:
         self.output_dir = os.path.join(os.path.dirname(__file__), 'state', 'output')
         os.makedirs(self.output_dir, exist_ok=True)
 
+    def _is_bot_protected(self, text: str) -> bool:
+        """Checks if the scraped text indicates a bot protection wall (Cloudflare, etc.)"""
+        text_lower = text.lower()
+        bot_phrases = [
+            "verify you are human",
+            "attention required! | cloudflare",
+            "cloudflare, inc.",
+            "please stand by, while we are checking your browser",
+            "enable javascript to view the page",
+            "pardon our interruption",
+            "we want to make sure it is actually you we are dealing with",
+            "are you a robot",
+            "checking your browser before accessing",
+            "one more step",
+            "to continue, please click the box below",
+            "security by perimeterx",
+            "incapsula incident id",
+            "automated requests",
+            "distil networks"
+        ]
+        return any(phrase in text_lower for phrase in bot_phrases)
+
     async def scrape_job_description(self, url: str) -> str:
+        logger.info(f"Attempting to scrape {url} via Playwright...")
         raw_html = ""
         try:
             async with async_playwright() as p:
@@ -86,7 +109,56 @@ class CoverLetterGenerator:
             logger.warning(f"Failed to scrape full HTML from {url}: {e}")
             raw_html = f"Job Posting URL: {url}"
             
-        return clean_html_to_text(raw_html, max_chars=4500)
+        cleaned_text = clean_html_to_text(raw_html, max_chars=4500)
+        
+        # 1. Quick regex check for bot protection
+        if self._is_bot_protected(cleaned_text):
+            logger.warning("Bot protection detected by Playwright. Attempting Jina Reader API fallback...")
+            import requests
+            try:
+                resp = requests.get(f"https://r.jina.ai/{url}", timeout=15)
+                if resp.status_code == 200 and not self._is_bot_protected(resp.text):
+                    logger.info("Jina API fallback successful!")
+                    cleaned_text = resp.text[:4500]
+                else:
+                    raise ValueError("Anti-bot protection active.")
+            except Exception as jina_err:
+                logger.error(f"Jina fallback failed: {jina_err}")
+                raise ValueError(
+                    "❌ Anti-Bot Protection Detected! I couldn't read the job description because the site blocked me. "
+                    "Please copy and paste the raw text of the job description into the chat instead of sending the URL."
+                )
+
+        # 2. LLM Validation to ensure it's a real job description and not a redirect/generic page
+        if not self._validate_job_description(cleaned_text):
+            logger.warning("LLM Validation failed: The scraped text does not look like a job description.")
+            raise ValueError(
+                "❌ The scraped page does not appear to contain a valid job description. "
+                "The site might have redirected me to the homepage, a list of jobs, or a security check. "
+                "Please copy and paste the raw text of the job description instead of using the URL!"
+            )
+            
+        return cleaned_text
+
+    def _validate_job_description(self, text: str) -> bool:
+        """Uses an LLM to quickly verify if the scraped text is an actual job description."""
+        prompt = f"""
+Analyze the following scraped text from a webpage.
+Determine if it contains a specific, distinct job description (e.g. mentions a specific role, responsibilities, requirements).
+If the text is just a generic company homepage, a list of random jobs, or a security/captcha page, it is invalid.
+
+If it is a valid job description, reply EXACTLY with "YES".
+If it is invalid, reply EXACTLY with "NO".
+
+Scraped Text:
+{text[:2000]}
+"""
+        try:
+            response = generate_content_with_failover(prompt_text=prompt)
+            return "YES" in response.text.strip().upper()
+        except Exception as e:
+            logger.error(f"Validation LLM failed: {e}. Defaulting to assuming it's valid.")
+            return True
 
     async def generate_text(self, url_or_text: str) -> tuple[str, dict]:
         if url_or_text.startswith("http://") or url_or_text.startswith("https://"):
@@ -129,7 +201,12 @@ Write the complete cover letter text:
 
     async def generate_pdf(self, letter_text: str, candidate_data: dict, color_hex: str = "#0F52BA") -> str:
         """Renders the cover letter to a sleek PDF and saves it in state/output/."""
-        pdf_filename = f"cover_letter_{uuid.uuid4().hex[:8]}.pdf"
+        company_name = candidate_data.get('target_company', '').strip()
+        safe_company_name = "".join([c for c in company_name if c.isalnum() or c.isspace()]).replace(" ", "_").lower()
+        if not safe_company_name:
+            safe_company_name = f"company_{uuid.uuid4().hex[:8]}"
+            
+        pdf_filename = f"{safe_company_name}_cover_letter.pdf"
         output_path = os.path.join(self.output_dir, pdf_filename)
         
         template = Template(COVER_LETTER_HTML_TEMPLATE)
