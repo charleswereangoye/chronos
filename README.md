@@ -2,244 +2,204 @@
 
 <img src="assets/banner.jpg" alt="Chronos Banner" width="100%"/>
 
-# CHRONOS
+# Chronos: Autonomous Multi-Agent Operating System
 
-**The Autonomous, Zero-Cost ($0.00 Overhead) Multi-Agent Operating System**
+**An Enterprise-Grade, Modular Framework for Scalable Autonomous Workflows**
 
-![Python](https://img.shields.io/badge/Python-3.11+-blue.svg?style=for-the-badge&logo=python)
-![Gemini](https://img.shields.io/badge/Gemini-Pro-orange.svg?style=for-the-badge&logo=googlegemini)
-![Playwright](https://img.shields.io/badge/Playwright-Headless-brightgreen.svg?style=for-the-badge&logo=playwright)
-![Telegram](https://img.shields.io/badge/Telegram-Bot_GUI-blue.svg?style=for-the-badge&logo=telegram)
-![MoviePy](https://img.shields.io/badge/MoviePy_%26_yt--dlp-Video_Engine-red.svg?style=for-the-badge&logo=youtube)
-![Zero Cost](https://img.shields.io/badge/Zero_Cost-$0.00_Overhead-success.svg?style=for-the-badge)
-![Multi-Platform](https://img.shields.io/badge/Multi--Platform-X_%7C_Instagram_%7C_Facebook-black.svg?style=for-the-badge)
-![License](https://img.shields.io/badge/License-MIT-purple.svg?style=for-the-badge)
+[![Python Version](https://img.shields.io/badge/Python-3.11+-blue.svg?style=for-the-badge&logo=python)](#)
+[![Gemini LLM](https://img.shields.io/badge/LLM-Gemini_Pro-orange.svg?style=for-the-badge&logo=googlegemini)](#)
+[![Playwright](https://img.shields.io/badge/Automation-Playwright-brightgreen.svg?style=for-the-badge&logo=playwright)](#)
+[![Docker](https://img.shields.io/badge/Containerized-Docker-2496ED.svg?style=for-the-badge&logo=docker)](#)
+[![License](https://img.shields.io/badge/License-MIT-purple.svg?style=for-the-badge)](#)
 
 </div>
 
 ---
 
-## 🌟 Project Vision & Executive Summary
+## 1. Executive Summary
 
-Chronos is a modular, autonomous multi-agent operating system designed to automate complex, real-world workflows without the burden of monthly SaaS fees or paid API subscriptions. It acts as a fully autonomous digital employee, running seamlessly in the background.
+**Chronos** is an advanced, autonomous multi-agent operating system engineered to execute complex, real-world workflows dynamically. Designed for scalability and resilience, the framework seamlessly integrates Large Language Models (LLMs) with headless browser automation, delivering a highly extensible platform for multi-domain operations. 
 
-**The Core Philosophy:**
-**Intelligent Brains (LLMs) + Autonomous Hands (Playwright/Scrapers) + Human-in-the-Loop (Telegram Orchestrator)**
-
-Chronos leverages Gemini's reasoning engine alongside headless stealth automation tools to orchestrate market analysis, multi-platform media production, viral video generation, and workflow automations entirely for free.
+By abstracting the orchestration layer from specialized sub-agents, Chronos enables organizations to deploy scalable digital workforce solutions—spanning data analysis, intelligent media distribution, and automated interactions—with near-zero operational overhead.
 
 ---
 
-## 🏗️ Complete Multi-Agent Architecture
+## 2. Core Capabilities
 
-The ecosystem relies on an interactive orchestration layer that delegates instructions to specific agent pipelines while maintaining centralized memory logic.
+*   **Intelligent Agent Orchestration:** Centralized command dispatch via an interactive Telegram-based GUI, facilitating human-in-the-loop (HITL) approval workflows before execution.
+*   **Dynamic Headless Automation:** Integrated Playwright and Twikit engines for sophisticated UI interactions, bypass handling, and seamless content publication across diverse platforms.
+*   **Resilient API Management:** Built-in load balancing and API key rotation for Google Gemini SDKs, ensuring high availability and fault tolerance.
+*   **Context-Aware Memory Systems:** JSON-backed persistent state management and circular buffering to maintain agent continuity, contextual memory, and state isolation.
+*   **Containerized Portability:** Fully dockerized architecture with robust background daemon execution, ready for deployment in modern cloud environments.
+
+---
+
+## 3. System Architecture
+
+The ecosystem relies on an event-driven orchestration layer that securely delegates tasks to specialized agent pipelines while maintaining centralized memory logic.
 
 ```mermaid
 graph TD
     %% Main Components
-    MO["🤖 Master Telegram Orchestrator<br/>(Interactive GUI & Command Dispatch)"]
+    MO["🧠 Master Orchestrator<br/>(Command Dispatch & HITL Review)"]
     
     %% Sub-Agents
-    SA["📱 Social Media & Meme Engine"]
-    FA["📈 Forex Trading Agent"]
-    JA["💼 Job Seeking Agent"]
+    SA["🌐 Media & Social Agent<br/>(Content Synthesis & Publishing)"]
+    FA["📈 Financial/Forex Agent<br/>(Market Analytics - WIP)"]
+    JA["💼 Workflow Agent<br/>(Process Automation - WIP)"]
 
-    MO -- "Dispatches Commands" --> SA
-    MO -- "Dispatches Commands" --> FA
-    MO -- "Dispatches Commands" --> JA
+    MO -- "Asynchronous Dispatch" --> SA
+    MO -- "Asynchronous Dispatch" --> FA
+    MO -- "Asynchronous Dispatch" --> JA
 
     %% Memory Module
-    MEM[("🗄️ Contextual Memory Bank<br/>(history.json)")]
+    MEM[("🗄️ Persistent Memory Layer<br/>(State & History Buffer)")]
     SA <--> MEM
 
     %% Social Agent Internal Flow
-    subgraph "Social Agent Workflow"
+    subgraph "Media Processing Pipeline"
         CR["🔀 Content Router"]
         SA --> CR
         
         %% Paths
-        PathA["🖼️ Path A:<br/>Static Playwright Canvas"]
-        PathB["🎬 Path B:<br/>Video Meme MoviePy Engine"]
+        PathA["🖼️ Static Renderer<br/>(Headless Playwright Canvas)"]
+        PathB["🎬 Video Compositor<br/>(MoviePy Engine)"]
         
         CR --> PathA
         CR --> PathB
         
         %% Publishers
-        Pubs["🚀 Multi-Platform Stealth Publishers<br/>(X Twikit, TikTok Playwright, Meta Graph API via Catbox)"]
+        Pubs["🚀 Automated Distribution Network<br/>(X/Twitter, Meta Graph API)"]
         
         PathA --> Pubs
         PathB --> Pubs
     end
-    
-    %% Other Agents
-    subgraph "Trading & Workflow Agents"
-        FA_Sub["Market monitoring, Technical analysis,<br/>Price action alerts"]
-        FA --> FA_Sub
-        
-        JA_Sub["IMAP email reader, CV/resume parsing,<br/>Automated application workflow"]
-        JA --> JA_Sub
-    end
 ```
 
 ---
 
-## 🛠️ Granular Sub-Agent Technical Breakdown
+## 4. Sub-Agent Topologies
 
-### 1. Master Telegram GUI Orchestrator
-The central nerve center of Chronos (`orchestrator/telegram_orchestrator.py`).
-- **Interactive Draft Review:** All agents compile JSON drafts (quotes, captions, overlays). The Orchestrator presents these drafts via inline keyboards allowing the user to `✅ Approve`, `✏️ Edit`, or `🔄 Reject` before publishing.
-- **Manual & Custom Generation:** Full support for manual text, photo, and custom video posts with explicit prompt states for custom captions and hashtags.
-- **Unified Action Buttons:** Streamlined multi-step background flows into single clicks (e.g., "Tailor CV & Cover Letter" runs parallel web scrapers, LLM agents, and PDF generators concurrently).
-- **On-the-Fly Downloader:** Features a `/clip [url] [start] [end]` command utilizing `yt-dlp` to download or clip videos directly from chat into the local templates directory.
+### 4.1 Master Orchestrator Layer
+The central nerve center (`orchestrator/`) managing state and human-in-the-loop (HITL) interactions.
+*   **Interactive Review Pipeline:** All agents generate standardized payloads (drafts, configurations, operational metadata). The Orchestrator surfaces these via inline dashboards for human validation (`✅ Approve`, `✏️ Edit`, or `🔄 Reject`) before executing network requests.
+*   **Manual & Custom Generation:** Full support for manual text, photo, and custom video posts with explicit prompt states for custom captions and hashtags.
+*   **Unified Action Buttons:** Streamlined multi-step background flows into single clicks (e.g., "Tailor CV & Cover Letter" runs parallel web scrapers, LLM agents, and PDF generators concurrently).
+*   **Media Ingestion & Processing:** Native support for URL parsing, segmented video clipping via `yt-dlp` (e.g., `/clip [url] [start] [end]`), and asset routing to the appropriate agent template directories.
 
-### 2. Social Media & Autonomous Media Engine
-An advanced content creation suite designed to emulate an authentic human influencer.
-- **Static Graphic Engine:** Generates Gemini persona-driven quotes, populates a Tailwind HTML template, and renders a 1080x1350 Canva-style canvas using headless Playwright.
-- **Video Meme Engine:** Combines `yt-dlp` downloaded templates with `moviepy` vertical (9:16) composite rendering. Overlays dynamic HTML-rendered meme cards and synchronizes viral hashtags (`#forextrading`, `#tradingmemes`, `#fyp`).
-- **Zero-Cost Stealth Publishing:** Completely bypasses standard API rate limits and paywalls:
-  - Cookie injection for X (Twitter) via Twikit (`state.json`).
-  - Direct Meta Graph API integration (handling chunked FB uploads and Catbox temporary cloud hosting for Instagram Reels container processing).
-  - *Note: Automated TikTok publishing has been disabled due to aggressive anti-bot protections causing frequent session logouts. The agent will still generate the video for manual upload.*
-- **Dynamic Memory Engine:** Maintains a circular 50-quote buffer (`history.json`) mapping caption start-phrases and tracking emotional filters (`panic`, `celebration`) to prevent duplicate posting and maintain contextual narrative.
+### 4.2 Media & Social Operations Agent
+An autonomous media synthesis and distribution pipeline (`agents/social_agent/`).
+*   **Render Engine:** Utilizes headless Playwright to populate HTML/Tailwind templates, generating high-resolution (1080x1350) canvas assets.
+*   **Compositing Engine:** Integrates `moviepy` for vertical video synthesis, appending dynamic metadata (e.g., HTML text cards) to segmented base templates.
+*   **Distribution Modules:** Manages authenticated session states (`state.json`) and access tokens to interface securely with X (Twikit) and the Meta Graph API.
+*   **State Management:** Implements a fixed-size circular buffer to maintain emotional state vectors and prevent repetitive processing.
 
-### 3. Forex Trading Sub-Agent (WIP)
+### 4.3 Analytical & Workflow Agents
+
+#### 4.3.1 Financial Analytics Agent (WIP)
 A dedicated financial agent monitoring raw market data.
-- **Monitoring & Alerts:** Evaluates technical setups, parses economic calendars, and feeds real-time price action sentiment back into the Social Agent for cohesive content.
+*   **Monitoring & Alerts:** Evaluates technical setups, parses economic calendars, and feeds real-time price action sentiment back into the Social Agent for cohesive content.
 
-### 4. Job Seeking & Productivity Sub-Agent
+#### 4.3.2 Job Seeking & Productivity Agent
 An automated career manager that acts as your personal job-seeking proxy.
-- **Profile Synthesizer:** Scrapes and merges your GitHub, LinkedIn, and base Resume into a master JSON profile using Gemini.
-- **Automated CV & Cover Letter Tailoring:** Uses Playwright to scrape a target job description URL, deeply analyzes the requirements, and instantly tailors your CV and Cover Letter to match.
-- **Dynamic Formatting:** Generates premium, ATS-friendly PDFs using headless HTML rendering, automatically pulling the target company's brand color (with luminance-safety checks) and naming the files dynamically (e.g., `glovo_cv.pdf`).
+*   **Profile Synthesizer:** Scrapes and merges your GitHub, LinkedIn, and base Resume into a master JSON profile using Gemini.
+*   **Automated CV & Cover Letter Tailoring:** Uses Playwright to scrape a target job description URL, deeply analyzes the requirements, and instantly tailors your CV and Cover Letter to match.
+*   **Dynamic Formatting:** Generates premium, ATS-friendly PDFs using headless HTML rendering, automatically pulling the target company's brand color (with luminance-safety checks) and naming the files dynamically.
 
 ---
 
-## 📸 Interactive Visual Showcase
+## 5. Technical Specifications & Setup
 
-<table>
-  <tr>
-    <td align="center" width="50%">
-      <h3>Dynamic Static Quote Canvas</h3>
-      <p><em>Playwright 1080x1350 Canva-style rendering</em></p>
-      <img src="assets/demos/demo_quote.jpg" alt="Static Quote Demo" width="100%"/>
-    </td>
-    <td align="center" width="50%">
-      <h3>Viral Video Reel Meme</h3>
-      <p><em>MoviePy 9:16 vertical video + HTML text-card composite</em></p>
-      <img src="assets/demos/demo_reel.gif" alt="Video Reel Demo" width="100%"/>
-    </td>
-  </tr>
-</table>
+### 5.1 System Requirements
+*   Python 3.11 or higher
+*   Docker & Docker Compose (for containerized deployments)
+*   Playwright dependencies
 
----
-
-## ⚙️ Technical Specs & Configuration
-
-<details>
-<summary><b>🛠️ Environment Variables Configuration (.env.example)</b></summary>
-<br>
-Create a <code>.env</code> file in the root directory and populate it:
+### 5.2 Environment Configuration
+System configuration relies on environment variables. Create a `.env` file in the project root:
 
 ```env
-# Google Gemini SDK (Supports Key Rotation)
-GEMINI_API_KEY_1="your_gemini_api_key_here"
-GEMINI_API_KEY_2="your_backup_gemini_api_key_here"
+# AI Model Configuration (Supports Key Rotation & Load Balancing)
+GEMINI_API_KEY_1="primary_api_key"
+GEMINI_API_KEY_2="secondary_api_key"
 
-# X (Twitter) Fallback Login
-X_USERNAME="your_x_username"
-X_PASSWORD="your_x_password"
+# Authentication Credentials
+X_USERNAME="service_account_username"
+X_PASSWORD="service_account_password"
 
-# Meta Graph API (Facebook & Instagram)
-FB_PAGE_ID="your_facebook_page_id"
-IG_USER_ID="your_instagram_user_id"
-META_PAGE_ACCESS_TOKEN="your_long_lived_meta_access_token"
+# API Integration Tokens
+FB_PAGE_ID="meta_page_id"
+IG_USER_ID="meta_ig_user_id"
+META_PAGE_ACCESS_TOKEN="long_lived_access_token"
 
-# Telegram Orchestrator
-TELEGRAM_BOT_TOKEN="your_telegram_bot_token"
-```
-</details>
-
-<details>
-<summary><b>🍪 Zero-Cost Stealth Cookie Ingestion (state.json & tiktok_state.json)</b></summary>
-<br>
-To execute stealth API bypasses without triggering bot detections, you must provide exported browser session cookies:
-
-1. Log into X (Twitter) on your local browser.
-2. Export your session cookies in JSON format (using an extension like EditThisCookie).
-3. Place your X cookies at: `agents/social_agent/state/state.json`
-
-*(Note: These files are heavily ignored by `.gitignore` to preserve session security.)*
-</details>
-
-<details>
-<summary><b>🐳 Docker Containerization & Background Daemons</b></summary>
-<br>
-Chronos is production-ready for 24/7 headless execution. 
-
-```bash
-# Build and run the entire ecosystem in detached mode
-docker-compose up -d --build
+# Orchestrator Configuration
+TELEGRAM_BOT_TOKEN="secure_bot_token"
 ```
 
-The provided `Dockerfile` and `entrypoint.sh` automatically configure the required Linux dependencies for Playwright execution and background script loops.
-</details>
-
----
-
-## 💬 Telegram Orchestrator Command Reference
-
-Interact directly with Chronos via the Telegram GUI.
-
-| Command | Functionality |
-| :--- | :--- |
-| `/start` | Launch the interactive GUI dashboard and access the main agent menu. |
-| `/generate_post` | Trigger static persona quote generation & initiate interactive draft review. |
-| `/generate_video` | Trigger vertical 9:16 video meme generation & initiate interactive draft review. |
-| `/clip [url] [start] [end]` | Automatically download or clip a video segment via `yt-dlp` directly into the templates folder. |
-| `/status` | View agent health, multi-platform publishing status, and contextual memory stats. |
-
-*(All generated outputs will first prompt for explicit human approval `✅ Approve & Post` before executing network requests).*
-
----
-
-## 🚀 Installation & Quickstart Guide
-
-If running locally (without Docker), follow these exact steps:
+### 5.3 Local Development Setup
 
 ```bash
 # 1. Clone the repository
 git clone https://github.com/charleswereangoye/chronos.git
 cd chronos
 
-# 2. Setup Virtual Environment
+# 2. Initialize the Python Virtual Environment
 python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 
-# 3. Install Python Dependencies
+# 3. Install Core Dependencies
 pip install -r requirements.txt
 
-# 4. Install Playwright Headless Browsers
+# 4. Initialize Headless Browsers
 playwright install chromium
 
-# 5. Launch the Master Orchestrator
+# 5. Launch the Orchestrator
 python orchestrator/telegram_orchestrator.py
+```
+
+### 5.4 Dockerized Deployment
+
+For robust, persistent execution in production environments:
+
+```bash
+# Build the images and start the daemon services
+docker-compose up -d --build
+
+# Monitor operational logs
+docker-compose logs -f chronos_bot
+```
+
+### 5.5 Session State Management
+To enable secure distribution network bypasses without exposing raw credentials:
+1. Export active browser session cookies in standard JSON format.
+2. Deploy the cookie manifest to the secured state directory: `agents/social_agent/state/state.json`.
+
+---
+
+## 6. Testing & Quality Assurance
+
+Chronos maintains a robust test suite to validate core workflows and API integrations. Ensure the virtual environment is active before running tests.
+
+```bash
+# Execute unit and integration tests
+pytest test_*.py -v
 ```
 
 ---
 
-## 🗺️ Project Roadmap & Future Milestones
+## 7. License and Governance
 
-**✅ Completed Milestones:**
-- [x] Master Telegram Orchestrator & CLI Interface.
-- [x] Playwright HTML-to-Image Rendering Engine (High-Res 1080x1350).
-- [x] Twikit Stealth X Integration & Meta Graph API (Reels & Feed) Integration.
-- [ ] TikTok Headless Automation (Temporarily disabled due to anti-bot restrictions).
-- [x] Video Meme Generator (MoviePy vertical compositing + `yt-dlp` clipping).
-- [x] JSON Contextual Memory & Emotion Tracking (50-item buffer).
+This project is licensed under the **MIT License**. See the `LICENSE` file for full details. 
+
+## 8. Project Roadmap & Future Milestones
 
 **⏳ Pending Modules:**
-- [ ] **YouTube Shorts Automation:** Playwright headless login support for YouTube Shorts stealth uploads.
-- [ ] **Forex Agent Expansion:** MT4/MT5 webhook integration and explicit TradingView alert parsing.
-- [x] **Job Seeking Agent CV Tailoring:** Fully autonomous profile synthesis and ATS-optimized document generation.
-- [ ] **Job Seeking Agent Auto-Apply:** Selenium-based auto-apply scripts and IMAP interview matching.
-- [ ] **Cloud VPS Daemon Optimization:** Deep optimization for persistent 24/7 autonomous heartbeat execution on low-tier cloud hardware.
+*   [ ] **YouTube Shorts Automation:** Playwright headless login support for YouTube Shorts stealth uploads.
+*   [ ] **Forex Agent Expansion:** MT4/MT5 webhook integration and explicit TradingView alert parsing.
+*   [x] **Job Seeking Agent CV Tailoring:** Fully autonomous profile synthesis and ATS-optimized document generation.
+*   [ ] **Job Seeking Agent Auto-Apply:** Selenium-based auto-apply scripts and IMAP interview matching.
+*   [ ] **Cloud VPS Daemon Optimization:** Deep optimization for persistent 24/7 autonomous heartbeat execution on low-tier cloud hardware.
+
+---
+
+*Designed and engineered for scalability, security, and continuous autonomous operation.*
