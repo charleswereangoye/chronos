@@ -1199,8 +1199,10 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return MAIN_MENU
 
 
-async def _process_tailor_cv(update: Update, url: str):
-    await safe_reply(update.message, f"⏳ Tailoring CV and Cover Letter for {url}...\nThis might take a minute.")
+async def _process_tailor_cv(update: Update, url_or_text: str):
+    is_url = url_or_text.startswith("http://") or url_or_text.startswith("https://")
+    label = url_or_text if is_url else "your submitted job description"
+    await safe_reply(update.message, f"⏳ Tailoring CV and Cover Letter for {label}...\nThis might take a minute.")
 
     try:
         from agents.job_seeking.tailor_engine import TailorEngine
@@ -1210,18 +1212,18 @@ async def _process_tailor_cv(update: Update, url: str):
 
         # 1. Scrape and generate Cover Letter text
         cover_gen = CoverLetterGenerator()
-        letter_text, candidate_data = await cover_gen.generate_text(url)
+        letter_text, candidate_data = await cover_gen.generate_text(url_or_text)
 
         # 2. Get Brand Color
         engine = TailorEngine()
-        color_hex = await engine.get_brand_color(url) if url.startswith("http") else "#0F52BA"
+        color_hex = await engine.get_brand_color(url_or_text) if is_url else "#0F52BA"
 
         # 3. Generate Cover Letter PDF
         cl_pdf_path = await cover_gen.generate_pdf(letter_text, candidate_data, color_hex=color_hex)
         with open(cl_pdf_path, "rb") as pdf_file:
             await update.message.reply_document(
                 document=pdf_file,
-                caption=f"✅ Here is your tailored Cover Letter PDF for {url}.",
+                caption=f"✅ Here is your tailored Cover Letter PDF for {label}.",
             )
 
         # 4. Generate CV PDF using the exact same candidate_data and brand color
@@ -1240,7 +1242,7 @@ async def _process_tailor_cv(update: Update, url: str):
         with open(cv_output_path, "rb") as pdf_file:
             await update.message.reply_document(
                 document=pdf_file,
-                caption=f"✅ Here is the tailored CV for {url} (Brand Color: {color_hex}).",
+                caption=f"✅ Here is the tailored CV for {label} (Brand Color: {color_hex}).",
             )
 
     except Exception as e:
@@ -1284,16 +1286,24 @@ async def job_seeking_menu_handler(update: Update, context: ContextTypes.DEFAULT
 
     elif text.startswith("2"):
         await update.message.reply_text(
-            "⏳ Generating top matching remote jobs...",
+            "📝 Please paste the raw text / description of the job posting to tailor your CV and Cover Letter:",
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        return TAILOR_CV_TEXT
+
+    elif text.startswith("3"):
+        await update.message.reply_text(
+            "⏳ Scanning remote job boards and matching against your profile...",
             reply_markup=ReplyKeyboardRemove(),
         )
         try:
             from agents.job_seeking.job_scraper import JobScraper
             scraper = JobScraper()
-            matches = await scraper.find_matches()
-            await update.message.reply_text(matches)
+            matches = await scraper.find_matches(force_refresh_profile=True)
+            await safe_reply(update.message, matches)
         except Exception as e:
             await update.message.reply_text(f"❌ Failed to fetch jobs: {e}")
+            
         reply_markup = ReplyKeyboardMarkup(
             job_seeking_menu_keyboard, resize_keyboard=True, one_time_keyboard=False
         )
@@ -1303,9 +1313,9 @@ async def job_seeking_menu_handler(update: Update, context: ContextTypes.DEFAULT
         )
         return JOB_SEEKING_MENU
 
-    elif text.startswith("3"):
+    elif text.startswith("4"):
         await update.message.reply_text(
-            "🔗 Please send the job posting URL to generate interview prep:",
+            "🔗 Please send the job posting URL or paste the job description to generate interview prep:",
             reply_markup=ReplyKeyboardRemove(),
         )
         return INTERVIEW_PREP_URL
@@ -1383,6 +1393,17 @@ async def receive_interview_prep_url(
 async def receive_cv_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = update.message.text.strip()
     await _process_tailor_cv(update, url)
+
+    reply_markup = ReplyKeyboardMarkup(
+        job_seeking_menu_keyboard, resize_keyboard=True, one_time_keyboard=False
+    )
+    await safe_reply(update.message, "--- Job Seeking Agent Menu ---\nWhat do you want to do next?", reply_markup=reply_markup)
+    return JOB_SEEKING_MENU
+
+
+async def receive_cv_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    raw_text = update.message.text.strip()
+    await _process_tailor_cv(update, raw_text)
 
     reply_markup = ReplyKeyboardMarkup(
         job_seeking_menu_keyboard, resize_keyboard=True, one_time_keyboard=False

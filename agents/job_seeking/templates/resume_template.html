@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ candidate.name | default('Candidate') }} - Resume</title>
+    <title>{{ candidate.name | default('Charles Were Angoye') }} - Resume</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --brand-accent: {{ dynamic_color | default('#2C4258') }};
-            --text-main: #374151;
-            --text-heading: #111827;
-            --text-muted: #6b7280;
+            --brand-accent: {{ dynamic_color | default('#0F52BA') }};
+            --text-main: #2D3748;
+            --text-heading: #1A202C;
+            --text-muted: #718096;
             --bg-color: #ffffff;
         }
 
@@ -21,10 +21,10 @@
         }
 
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             color: var(--text-main);
             background-color: var(--bg-color);
-            line-height: 1.5;
+            line-height: 1.45;
             margin: 0;
             padding: 0;
             -webkit-print-color-adjust: exact;
@@ -32,94 +32,106 @@
         }
 
         .container {
-            max-width: 800px;
+            max-width: 820px;
             margin: 0 auto;
             background: #ffffff;
-            padding: 40px 50px;
-            border-top: 8px solid var(--brand-accent);
+            padding: 32px 42px;
+            border-top: 6px solid var(--brand-accent);
         }
 
         header {
             text-align: center;
-            margin-bottom: 28px;
+            margin-bottom: 20px;
+            padding-bottom: 14px;
+            border-bottom: 1.5px solid #E2E8F0;
         }
 
         h1 {
             color: var(--text-heading);
-            font-size: 26pt;
-            font-weight: 700;
+            font-size: 22pt;
+            font-weight: 800;
             margin: 0 0 4px 0;
             letter-spacing: -0.5px;
             text-transform: uppercase;
         }
 
         .subtitle {
-            font-size: 11.5pt;
-            font-weight: 600;
+            font-size: 11pt;
+            font-weight: 700;
             color: var(--brand-accent);
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 0.8px;
         }
 
         .contact-info {
-            font-size: 10pt;
+            font-size: 9pt;
             color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        .contact-info a {
+            color: var(--text-main);
+            text-decoration: none;
+            font-weight: 500;
         }
 
         h2 {
             color: var(--text-heading);
-            font-size: 12.5pt;
+            font-size: 11.5pt;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            margin-top: 24px;
-            margin-bottom: 12px;
-            padding-bottom: 4px;
+            margin-top: 16px;
+            margin-bottom: 8px;
+            padding-bottom: 3px;
             border-bottom: 2px solid var(--brand-accent);
         }
 
         p {
-            font-size: 10pt;
-            margin: 0 0 12px 0;
+            font-size: 9.5pt;
+            margin: 0 0 8px 0;
+            color: var(--text-main);
+            text-align: justify;
         }
 
         .section {
-            margin-bottom: 22px;
+            margin-bottom: 14px;
         }
 
         .experience-item {
-            margin-bottom: 16px;
+            margin-bottom: 12px;
         }
         
         .experience-header {
             display: flex;
             justify-content: space-between;
             align-items: baseline;
-            margin-bottom: 4px;
+            margin-bottom: 3px;
         }
 
         .experience-header h3 {
-            font-size: 11pt;
-            font-weight: 600;
+            font-size: 10.5pt;
+            font-weight: 700;
             color: var(--text-heading);
             margin: 0;
         }
 
         .experience-header .duration {
-            font-size: 10pt;
+            font-size: 9pt;
             color: var(--text-muted);
-            font-weight: 500;
+            font-weight: 600;
         }
 
         ul {
             margin: 0;
-            padding-left: 20px;
-            font-size: 10pt;
+            padding-left: 18px;
+            font-size: 9.5pt;
         }
 
         li {
-            margin-bottom: 5px;
+            margin-bottom: 3px;
+            color: #2D3748;
         }
 
         li::marker {
@@ -127,40 +139,41 @@
         }
 
         .skills-list {
-            font-size: 10pt;
+            font-size: 9.5pt;
         }
         
         .skills-list strong {
             color: var(--text-heading);
             font-weight: 600;
         }
-
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>{{ candidate.name | default('Candidate Name') }}</h1>
-            <div class="subtitle">{{ candidate.title | default('Software Engineer') }}</div>
+            <h1>{{ candidate.name | default('Charles Were Angoye') }}</h1>
+            <div class="subtitle">{{ candidate.title | default('Full-Stack Software Engineer') }}</div>
             <div class="contact-info">
-                {{ candidate.location | default('City, Country') }} &nbsp;|&nbsp; {{ candidate.phone | default('+1234567890') }} &nbsp;|&nbsp; {{ candidate.email | default('email@example.com') }}
+                {{ candidate.location | default('Kigali, Rwanda / Nairobi, Kenya (GMT+2 / EAT)') }} &nbsp;|&nbsp; {{ candidate.phone | default('KE: +254 719 403 678 | RW: +250 795 589 824') }}<br>
+                {{ candidate.email | default('charleswereangoye@gmail.com') }} &nbsp;|&nbsp; <a href="https://{{ candidate.portfolio | default('charleswereangoye.dev') }}" target="_blank">{{ candidate.portfolio | default('charleswereangoye.dev') }}</a> &nbsp;|&nbsp; <a href="https://{{ candidate.github | default('github.com/charleswereangoye') }}" target="_blank">{{ candidate.github | default('github.com/charleswereangoye') }}</a>
             </div>
         </header>
 
         <div class="section">
             <h2>Professional Summary</h2>
-            <p>{{ candidate.summary | default('Detail-oriented and adaptable Software Engineering student specializing in Full-Stack Development. Proven experience collaborating in fast-paced environments.') }}</p>
+            <p>{{ candidate.summary | default('Detail-oriented and adaptable Software Engineering student specializing in Full-Stack Development. Proven experience collaborating in fast-paced environments, bridging robust backend logic with responsive, high-performance user interfaces.') }}</p>
         </div>
 
         <div class="section">
             <h2>Technical Skills</h2>
             <div class="skills-list">
                 <ul>
-                    <li><strong>Core Skills:</strong> {{ candidate.skills | join(', ') if candidate.skills else 'JavaScript, Python, React, Next.js, Node.js, SQL, Docker' }}</li>
+                    <li><strong>Core Skills:</strong> {{ candidate.skills | join(', ') if candidate.skills else 'JavaScript, TypeScript, Python, React, Next.js, Node.js, Flask, PostgreSQL, Docker, REST APIs, Tailwind CSS' }}</li>
                 </ul>
             </div>
         </div>
 
+        {% if candidate.experience %}
         <div class="section">
             <h2>Professional Experience</h2>
             {% for exp in candidate.experience %}
@@ -170,41 +183,55 @@
                     <span class="duration">{{ exp.duration }}</span>
                 </div>
                 <ul>
-                    <li>{{ exp.description }}</li>
-                </ul>
-            </div>
-            {% else %}
-            <div class="experience-item">
-                <div class="experience-header">
-                    <h3>Backend Developer Intern | Infinity Innovations Co.</h3>
-                    <span class="duration">May 2026 - Present</span>
-                </div>
-                <ul>
-                    <li>Stepped up as the backend team lead, taking ownership of the development workflow by assigning daily tasks.</li>
-                    <li>Conducted rigorous code reviews and safely executed final merges into the main branch.</li>
+                    {% if exp.highlights %}
+                        {% for h in exp.highlights %}
+                        <li>{{ h }}</li>
+                        {% endfor %}
+                    {% elif exp.description %}
+                        <li>{{ exp.description }}</li>
+                    {% endif %}
                 </ul>
             </div>
             {% endfor %}
         </div>
+        {% endif %}
+
+        {% if candidate.projects %}
+        <div class="section">
+            <h2>Technical Projects</h2>
+            {% for proj in candidate.projects %}
+            <div class="experience-item">
+                <div class="experience-header">
+                    <h3>{{ proj.name }} {% if proj.role %}<span style="font-weight: 500; font-size: 9pt; color: var(--text-muted);">— {{ proj.role }}</span>{% endif %}</h3>
+                    {% if proj.stack %}<span class="duration" style="font-weight: 600; color: var(--brand-accent);">{{ proj.stack }}</span>{% endif %}
+                </div>
+                <ul>
+                    {% if proj.highlights %}
+                        {% for h in proj.highlights %}
+                        <li>{{ h }}</li>
+                        {% endfor %}
+                    {% elif proj.description %}
+                        <li>{{ proj.description }}</li>
+                    {% endif %}
+                </ul>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
         
+        {% if candidate.education %}
         <div class="section">
             <h2>Education</h2>
             {% for edu in candidate.education %}
             <div class="experience-item">
                 <div class="experience-header">
                     <h3>{{ edu.degree }}</h3>
-                    <span class="duration">{{ edu.institution }} | {{ edu.year }}</span>
-                </div>
-            </div>
-            {% else %}
-            <div class="experience-item">
-                <div class="experience-header">
-                    <h3>Bachelor of Science in Software Engineering</h3>
-                    <span class="duration">The African Leadership University (ALU) | Expected Jan 2028</span>
+                    <span class="duration">{{ edu.institution }}{% if edu.location %} | {{ edu.location }}{% endif %} | {{ edu.year }}</span>
                 </div>
             </div>
             {% endfor %}
         </div>
+        {% endif %}
     </div>
 </body>
 </html>

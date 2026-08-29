@@ -14,12 +14,12 @@ COVER_LETTER_HTML_TEMPLATE = """
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Cover Letter - {{ candidate.name }}</title>
+    <title>Cover Letter - {{ candidate.name | default('Charles Were Angoye') }}</title>
     <style>
-        @page { size: A4; margin: 20mm 20mm; }
+        @page { size: A4; margin: 22mm 22mm; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            font-size: 10.5pt;
+            font-size: 10pt;
             line-height: 1.6;
             color: #2D3748;
             margin: 0;
@@ -27,11 +27,11 @@ COVER_LETTER_HTML_TEMPLATE = """
         }
         .header {
             border-bottom: 2px solid {{ dynamic_color | default('#0F52BA') }};
-            padding-bottom: 15px;
-            margin-bottom: 25px;
+            padding-bottom: 14px;
+            margin-bottom: 24px;
         }
         h1 {
-            font-size: 20pt;
+            font-size: 18pt;
             font-weight: 800;
             color: #1A202C;
             margin: 0 0 6px 0;
@@ -39,9 +39,15 @@ COVER_LETTER_HTML_TEMPLATE = """
             letter-spacing: -0.5px;
         }
         .contact {
-            font-size: 9.5pt;
+            font-size: 9pt;
             color: #718096;
             font-weight: 500;
+            line-height: 1.5;
+        }
+        .contact a {
+            color: #2D3748;
+            text-decoration: none;
+            font-weight: 600;
         }
         .content {
             white-space: pre-line;
@@ -57,7 +63,8 @@ COVER_LETTER_HTML_TEMPLATE = """
     <div class="header">
         <h1>{{ candidate.name | default('Charles Were Angoye') }}</h1>
         <div class="contact">
-            {{ candidate.location }} &bull; {{ candidate.email }} &bull; {{ candidate.phone }}
+            {{ candidate.location | default('Kigali, Rwanda / Nairobi, Kenya (GMT+2 / EAT)') }} &bull; {{ candidate.phone | default('KE: +254 719 403 678 | RW: +250 795 589 824') }}<br>
+            {{ candidate.email | default('charleswereangoye@gmail.com') }} &bull; <a href="https://{{ candidate.portfolio | default('charleswereangoye.dev') }}" target="_blank">{{ candidate.portfolio | default('charleswereangoye.dev') }}</a> &bull; <a href="https://{{ candidate.github | default('github.com/charleswereangoye') }}" target="_blank">{{ candidate.github | default('github.com/charleswereangoye') }}</a>
         </div>
     </div>
     <div class="content">
@@ -170,19 +177,31 @@ Scraped Text:
         logger.info("Retrieving candidate data for tailored cover letter...")
         candidate_data = await self.synthesizer.synthesize(job_description=job_description)
         
-        prompt = f"""
-You are an elite software engineering director and executive copywriter.
-Write a highly compelling, authentic cover letter for the candidate applying to the position described below.
+        company = candidate_data.get("target_company") or "Hiring Team"
+        portfolio_url = candidate_data.get("portfolio", "charleswereangoye.dev")
+        skills_str = ", ".join(candidate_data.get("skills", []))
 
-CRITICAL INSTRUCTIONS TO ELIMINATE ALL "AI" SIGNATURES:
-1. ABSOLUTELY NO em-dashes (—).
-2. DO NOT use generic AI openings (e.g., "I am thrilled to submit my application", "I am writing with great enthusiasm").
-   - OPEN STRONG: State the target role and immediately highlight 1-2 core architectural strengths directly relevant to their engineering challenges.
-3. CONCRETE PROOF OVER BUZZWORDS:
-   - Mention specific technical mechanisms (e.g., containerized async workflows in Python, high-throughput microservices, Redis caching, CI/CD pipelines).
-   - Explain how you approach engineering trade-offs (system resilience, reliability, latency).
-4. TONE: Confident, peer-to-peer, professional senior engineer communicating directly with an engineering leader.
-5. NO PLACEHOLDERS: If company name cannot be found, address to "Engineering Hiring Team". Do not leave square brackets like [Date] or [Company Name].
+        prompt = f"""
+You are Charles Were Angoye, a passionate, pragmatic Full-Stack & Backend Software Engineer writing a cover letter to {company}.
+Write an authentic, highly natural human cover letter that reads like it was written by a real, thoughtful software engineer communicating directly with an engineering manager.
+
+CRITICAL INSTRUCTIONS FOR NATURAL HUMAN WRITING:
+1. WRITE IN FLUID, COHESIVE PARAGRAPHS:
+   - Absolutely NO bullet points, NO numbered lists, and NO bold pseudo-headers (e.g. do NOT write 'Data Reliability:', 'System Resilience:', or 'My Technical Approach:').
+   - Keep the flow conversational, confident, and engaging.
+2. SHOW AUTHENTIC CONNECTION & PRACTICAL EXPERIENCE:
+   - State the target position naturally in the opening.
+   - Explain why the company's product or engineering mission genuinely interests you.
+   - Highlight your practical experience: leading backend workflows at Infinity Innovations, designing robust REST APIs in Python/Node.js, building data architectures in PostgreSQL, and containerizing services with Docker.
+   - Mention your real projects (like Trajour, InternLink, or Chronos Multi-Agent OS) and invite them to explore your live projects and code on your portfolio website ({portfolio_url}).
+3. NO AI CLICHES OR ROBOTIC PHRASES:
+   - Avoid generic phrases like 'I am writing with great enthusiasm', 'I am thrilled to apply', 'delve into', 'testament', or 'in today\\'s fast-paced world'.
+   - Avoid overly academic jargon or corporate memo speak. Speak peer-to-peer.
+4. FORMAT:
+   - Address to 'Dear {company} Team,' or 'Dear Hiring Team,'.
+   - 3 to 4 well-structured paragraphs.
+   - Close with 'Best regards,' followed by '{candidate_data.get("name", "Charles Were Angoye")}'.
+5. ABSOLUTELY NO em-dashes (—).
 
 --- CANDIDATE DATA ---
 {candidate_data}
@@ -190,7 +209,7 @@ CRITICAL INSTRUCTIONS TO ELIMINATE ALL "AI" SIGNATURES:
 --- TARGET JOB DESCRIPTION ---
 {job_description}
 
-Write the complete cover letter text:
+Write the complete natural cover letter text:
 """
         response = generate_content_with_failover(prompt_text=prompt)
         return response.text.strip(), candidate_data
