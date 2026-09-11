@@ -22,6 +22,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from shared.config import TELEGRAM_BOT_TOKEN
 from agents.social_agent.social_coordinator import SocialAgentCoordinator
 from agents.forex_agent.forex_coordinator import ForexCoordinator
+from agents.forex_agent.calendar_monitor import CalendarMonitor
 from shared.memory import MemoryManager
 from orchestrator.scheduler import AutonomousScheduler
 
@@ -32,12 +33,34 @@ logger = logging.getLogger(__name__)
 
 coordinator = SocialAgentCoordinator()
 forex_coordinator = ForexCoordinator()
+calendar_monitor = CalendarMonitor()
 memory_manager = MemoryManager()
 scheduler = None
 
+
+async def safe_edit_message_text(query, text, reply_markup=None, parse_mode="Markdown", **kwargs):
+    if not query or not text:
+        return None
+    try:
+        return await query.edit_message_text(text, parse_mode=parse_mode, reply_markup=reply_markup, **kwargs)
+    except Exception as err:
+        logger.warning(f"Failed to edit message with parse_mode={parse_mode}: {err}. Retrying without markdown.")
+        try:
+            return await query.edit_message_text(text, parse_mode=None, reply_markup=reply_markup, **kwargs)
+        except Exception as err2:
+            logger.error(f"Failed to edit message in plain text: {err2}")
+            return None
+
+
 async def safe_reply(message_target, text, reply_markup=None, parse_mode="Markdown", **kwargs):
-    target = message_target.message if hasattr(message_target, "message") and message_target.message else message_target
-    if not text:
+    if hasattr(message_target, "reply_text"):
+        target = message_target
+    elif hasattr(message_target, "message") and message_target.message:
+        target = message_target.message
+    else:
+        target = message_target
+
+    if not text or not target:
         return None
         
     chunk_size = 4000
@@ -59,7 +82,13 @@ async def safe_reply(message_target, text, reply_markup=None, parse_mode="Markdo
         return await target.reply_text(text, parse_mode=None, reply_markup=reply_markup, **kwargs)
 
 async def safe_reply_photo(message_target, photo, caption=None, reply_markup=None, parse_mode="Markdown", **kwargs):
-    target = message_target.message if hasattr(message_target, "message") and message_target.message else message_target
+    if hasattr(message_target, "reply_photo"):
+        target = message_target
+    elif hasattr(message_target, "message") and message_target.message:
+        target = message_target.message
+    else:
+        target = message_target
+
     try:
         return await target.reply_photo(photo=photo, caption=caption, parse_mode=parse_mode, reply_markup=reply_markup, **kwargs)
     except Exception as err:
@@ -67,7 +96,12 @@ async def safe_reply_photo(message_target, photo, caption=None, reply_markup=Non
         return await target.reply_photo(photo=photo, caption=caption, parse_mode=None, reply_markup=reply_markup, **kwargs)
 
 async def safe_reply_video(message_target, video, caption=None, reply_markup=None, parse_mode="Markdown", **kwargs):
-    target = message_target.message if hasattr(message_target, "message") and message_target.message else message_target
+    if hasattr(message_target, "reply_video"):
+        target = message_target
+    elif hasattr(message_target, "message") and message_target.message:
+        target = message_target.message
+    else:
+        target = message_target
     try:
         return await target.reply_video(video=video, caption=caption, parse_mode=parse_mode, reply_markup=reply_markup, **kwargs)
     except Exception as err:
@@ -103,6 +137,8 @@ TEXT_HASHTAGS = 25
 PHOTO_HASHTAGS = 26
 VIDEO_HASHTAGS = 27
 TAILOR_CV_TEXT = 28
+FOREX_MENU = 29
+FOREX_CUSTOM_PAIR = 30
 
 # Keyboards
 main_menu_keyboard = [
@@ -111,6 +147,15 @@ main_menu_keyboard = [
     ["3. 💱 Forex Agent"],
     ["4. 📅 Daily Updates Agent"],
     ["0. ❌ Exit"],
+]
+
+forex_menu_keyboard = [
+    ["1. ⚡ Quick Check (EURUSD)"],
+    ["2. 🥇 Analyze Gold (XAUUSD)"],
+    ["3. 🇬🇧 Analyze Cable (GBPUSD)"],
+    ["4. 💱 Custom Asset / Pair"],
+    ["5. 🛡️ Macro News & Calendar Shield"],
+    ["0. 🔙 Back to Main Menu"],
 ]
 
 job_seeking_menu_keyboard = [
@@ -480,7 +525,11 @@ def format_forex_card(setup: dict, setup_id: str) -> tuple[str, InlineKeyboardMa
     pair = setup.get("pair", "EURUSD")
     action = setup.get("trade_action", "READY_FOR_HITL_REVIEW")
     bias = setup.get("market_bias", "NEUTRAL")
-    current_price = setup.get("current_price", 0.0)
+    try:
+        current_price = float(setup.get("current_price") or 0.0)
+    except (ValueError, TypeError):
+        current_price = 0.0
+
     key_levels = setup.get("key_levels", {})
     risk = setup.get("risk_evaluation", {})
     sessions = setup.get("sessions", {})
@@ -489,17 +538,33 @@ def format_forex_card(setup: dict, setup_id: str) -> tuple[str, InlineKeyboardMa
     hold_reason = setup.get("hold_reason", "")
 
     bias_emoji = "🟢" if bias == "BULLISH" else ("🔴" if bias == "BEARISH" else "⚪")
-    rr_val = risk.get("risk_reward_ratio", 0.0)
+    try:
+        rr_val = float(risk.get("risk_reward_ratio") or 0.0)
+    except (ValueError, TypeError):
+        rr_val = 0.0
     is_approved = risk.get("is_approved", False)
     rr_icon = "✅" if is_approved and rr_val >= 2.0 else "⚠️"
 
+    try:
+        risk_pips = float(risk.get("risk_pips") or 0.0)
+        reward_pips = float(risk.get("reward_pips") or 0.0)
+        actual_risk_pct = float(risk.get("actual_risk_pct") or 1.0)
+        actual_risk_dollars = float(risk.get("actual_risk_dollars") or 100.0)
+        recommended_lots = float(risk.get("recommended_lots") or 0.01)
+    except (ValueError, TypeError):
+        risk_pips, reward_pips, actual_risk_pct, actual_risk_dollars, recommended_lots = 0.0, 0.0, 1.0, 100.0, 0.01
+
     hold_banner = ""
     if defensive_hold:
-        hold_banner = f"\n⚠️ *DEFENSIVE HOLD ACTIVE*\n_{hold_reason}_\n"
+        clean_hold = str(hold_reason).replace("*", "").replace("_", " ").replace("`", "'").replace("[", "(").replace("]", ")").strip()
+        hold_banner = f"\n⚠️ *DEFENSIVE HOLD ACTIVE*\n{clean_hold}\n"
 
     active_sessions_list = sessions.get("active_sessions", ["Active"])
     sessions_str = ", ".join(active_sessions_list) if active_sessions_list else "Off-Hours"
     liquidity_rating = sessions.get("liquidity_rating", "MODERATE")
+
+    # Sanitize thesis so markdown entities don't break Telegram parsing
+    clean_thesis = str(thesis).replace("*", "").replace("_", " ").replace("`", "'").replace("[", "(").replace("]", ")").strip()
 
     card = (
         f"💱 *CHRONOS QUANTITATIVE FOREX ALERT*\n"
@@ -509,15 +574,15 @@ def format_forex_card(setup: dict, setup_id: str) -> tuple[str, InlineKeyboardMa
         f"{hold_banner}\n"
         f"🎯 *Key Execution Levels:*\n"
         f"• *Entry Range:* `{key_levels.get('entry_range', key_levels.get('entry_price'))}`\n"
-        f"• *Stop Loss:* `{key_levels.get('stop_loss')}` ({risk.get('risk_pips', 0.0):.1f} pips)\n"
-        f"• *Target:* `{key_levels.get('target')}` ({risk.get('reward_pips', 0.0):.1f} pips)\n"
+        f"• *Stop Loss:* `{key_levels.get('stop_loss')}` ({risk_pips:.1f} pips)\n"
+        f"• *Target:* `{key_levels.get('target')}` ({reward_pips:.1f} pips)\n"
         f"• *Invalidation:* `{key_levels.get('invalidation')}`\n\n"
         f"🛡️ *Risk Guard Constraints:*\n"
         f"• *Risk-to-Reward:* `1:{rr_val:.2f}` {rr_icon} (Min 1:2.0)\n"
-        f"• *Account Risk:* `{risk.get('actual_risk_pct', 1.0):.2f}%` (Max 1.0% | ${risk.get('actual_risk_dollars', 100.0):.2f})\n"
-        f"• *Recommended Sizing:* `{risk.get('recommended_lots', 0.01):.2f} Lots`\n\n"
+        f"• *Account Risk:* `{actual_risk_pct:.2f}%` (Max 1.0% | ${actual_risk_dollars:.2f})\n"
+        f"• *Recommended Sizing:* `{recommended_lots:.2f} Lots`\n\n"
         f"🏛️ *Market Sessions:* {sessions_str} ({liquidity_rating} Liquidity)\n\n"
-        f"💡 *Institutional Thesis:*\n_{thesis}_\n"
+        f"💡 *Institutional Thesis:*\n{clean_thesis}\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━\n"
         f"_Human-In-The-Loop (HITL) Review Required._"
     )
@@ -534,20 +599,146 @@ def format_forex_card(setup: dict, setup_id: str) -> tuple[str, InlineKeyboardMa
     return card, InlineKeyboardMarkup(keyboard)
 
 
+async def run_forex_analysis(update: Update, context: ContextTypes.DEFAULT_TYPE, pair: str):
+    """Executes the full quantitative Forex pipeline for a specified pair."""
+    pair = pair.upper().replace("/", "").strip()
+    await safe_reply(
+        update.message,
+        f"⏳ Running quantitative market check for *{pair}*...\n_Analyzing Multi-Timeframe Candles, High-Impact Macro Shield, and Institutional Liquidity..._",
+    )
+    try:
+        res = await forex_coordinator.run({"pair": pair, "account_balance": 10000.0})
+        if res.is_success and res.data:
+            setup_id = str(uuid.uuid4())[:8]
+            context.bot_data[f"forex_setup_{setup_id}"] = res.data
+            card_text, reply_markup = format_forex_card(res.data, setup_id)
+            await safe_reply(update.message, card_text, reply_markup=reply_markup)
+        else:
+            await safe_reply(update.message, f"❌ Failed to analyze {pair}: {res.error_message}")
+    except Exception as e:
+        logger.exception(f"Forex Agent execution error: {e}")
+        await safe_reply(update.message, f"❌ Forex Agent Error: {e}")
+
+    reply_markup = ReplyKeyboardMarkup(forex_menu_keyboard, resize_keyboard=True)
+    await safe_reply(
+        update.message,
+        "--- 💱 Forex Agent Menu ---\nSelect an action from the keyboard below:",
+        reply_markup=reply_markup,
+    )
+    return FOREX_MENU
+
+
+async def forex_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handles selections within the Forex Agent submenu."""
+    text = update.message.text.strip()
+
+    if text.startswith("0") or "back" in text.lower():
+        reply_markup = ReplyKeyboardMarkup(
+            main_menu_keyboard, resize_keyboard=True, one_time_keyboard=False
+        )
+        await safe_reply(
+            update.message,
+            "=== Chronos Master Menu ===\nWhich agent do you want to use?",
+            reply_markup=reply_markup,
+        )
+        return MAIN_MENU
+
+    elif text.startswith("1") or "eurusd" in text.lower():
+        return await run_forex_analysis(update, context, "EURUSD")
+
+    elif text.startswith("2") or "gold" in text.lower() or "xauusd" in text.lower():
+        return await run_forex_analysis(update, context, "XAUUSD")
+
+    elif text.startswith("3") or "gbpusd" in text.lower() or "cable" in text.lower():
+        return await run_forex_analysis(update, context, "GBPUSD")
+
+    elif text.startswith("4") or "custom" in text.lower():
+        await safe_reply(
+            update.message,
+            "💱 Please send the ticker or currency pair you want to analyze (e.g. `USDJPY`, `AUDUSD`, `USDCHF`, `NZDUSD`, `USDCAD`, `XAUUSD`):",
+            reply_markup=ReplyKeyboardMarkup([["0. 🔙 Cancel"]], resize_keyboard=True),
+        )
+        return FOREX_CUSTOM_PAIR
+
+    elif text.startswith("5") or "calendar" in text.lower() or "shield" in text.lower():
+        await safe_reply(
+            update.message,
+            "⏳ Ingesting macroeconomic calendar feeds and evaluating news shield...",
+        )
+        try:
+            res = await calendar_monitor.run({"pair": "EURUSD"})
+            if res.is_success and res.data:
+                events = res.data.get("upcoming_high_impact", [])
+                is_hold = res.data.get("defensive_hold", False)
+                hold_reason = res.data.get("hold_reason", "")
+
+                shield_status = "🔴 ACTIVE (Trading Halted)" if is_hold else "🟢 CLEAR (Normal Execution)"
+                report_lines = [
+                    "🛡️ *MACROECONOMIC CALENDAR & DEFENSIVE SHIELD*",
+                    "━━━━━━━━━━━━━━━━━━━━━━━",
+                    f"*Shield Status:* {shield_status}",
+                ]
+                if is_hold:
+                    clean_reason = str(hold_reason).replace("*", "").replace("_", " ").strip()
+                    report_lines.append(f"⚠️ *Hold Reason:* {clean_reason}")
+
+                report_lines.append("\n📅 *Upcoming High-Impact Red Folder Events:*")
+                if events:
+                    for ev in events[:5]:
+                        t_utc = ev.get("time_utc", "")[:16].replace("T", " ")
+                        report_lines.append(f"• `{t_utc} UTC` | *{ev.get('country')}* | {ev.get('title')}")
+                else:
+                    report_lines.append("• _No imminent high-impact red-folder events detected in the next 2 hours._")
+
+                report_lines.append("━━━━━━━━━━━━━━━━━━━━━━━")
+                report_text = "\n".join(report_lines)
+                reply_markup = ReplyKeyboardMarkup(forex_menu_keyboard, resize_keyboard=True)
+                await safe_reply(update.message, report_text, reply_markup=reply_markup)
+            else:
+                reply_markup = ReplyKeyboardMarkup(forex_menu_keyboard, resize_keyboard=True)
+                await safe_reply(update.message, f"❌ Failed to fetch calendar: {res.error_message}", reply_markup=reply_markup)
+        except Exception as e:
+            logger.exception(f"Error checking calendar: {e}")
+            reply_markup = ReplyKeyboardMarkup(forex_menu_keyboard, resize_keyboard=True)
+            await safe_reply(update.message, f"❌ Calendar Check Error: {e}", reply_markup=reply_markup)
+        return FOREX_MENU
+
+    else:
+        reply_markup = ReplyKeyboardMarkup(forex_menu_keyboard, resize_keyboard=True)
+        await safe_reply(
+            update.message,
+            "Invalid choice. Please choose from the Forex Agent menu.",
+            reply_markup=reply_markup,
+        )
+        return FOREX_MENU
+
+
+async def receive_forex_pair(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Receives custom pair symbol from user and runs analysis."""
+    text = update.message.text.strip()
+    if text.startswith("0") or "cancel" in text.lower():
+        reply_markup = ReplyKeyboardMarkup(forex_menu_keyboard, resize_keyboard=True)
+        await safe_reply(update.message, "Cancelled custom pair analysis.", reply_markup=reply_markup)
+        return FOREX_MENU
+
+    pair = text.upper().replace("/", "").replace(" ", "").strip()
+    return await run_forex_analysis(update, context, pair)
+
+
 async def check_market_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles the /check_market [PAIR] command."""
     pair = "EURUSD"
     if context.args and len(context.args) > 0:
-        pair = context.args[0].upper().strip()
+        pair = context.args[0].upper().replace("/", "").strip()
 
-    await update.message.reply_text(
+    await safe_reply(
+        update.message,
         f"⏳ Running quantitative market check for *{pair}*...",
-        parse_mode="Markdown",
     )
     try:
         res = await forex_coordinator.run({"pair": pair, "account_balance": 10000.0})
         if not res.is_success or not res.data:
-            await update.message.reply_text(f"❌ Failed to analyze market for {pair}: {res.error_message}")
+            await safe_reply(update.message, f"❌ Failed to analyze market for {pair}: {res.error_message}")
             return
 
         setup_id = str(uuid.uuid4())[:8]
@@ -555,10 +746,10 @@ async def check_market_command(update: Update, context: ContextTypes.DEFAULT_TYP
         context.bot_data[f"forex_setup_{setup_id}"] = setup_data
 
         card_text, reply_markup = format_forex_card(setup_data, setup_id)
-        await safe_reply(update.message, card_text, reply_markup=reply_markup, parse_mode="Markdown")
+        await safe_reply(update.message, card_text, reply_markup=reply_markup)
     except Exception as e:
         logger.exception(f"Error in check_market_command: {e}")
-        await update.message.reply_text(f"❌ Error during market check: {e}")
+        await safe_reply(update.message, f"❌ Error during market check: {e}")
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -605,27 +796,16 @@ async def main_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=reply_markup,
         )
         return JOB_SEEKING_MENU
-    elif text.startswith("3"):
-        await update.message.reply_text(
-            "⏳ Running quantitative market check for *EURUSD*...\n_(Tip: You can also use `/check_market [PAIR]` directly for any pair like GBPUSD, USDJPY, or XAUUSD)_",
-            parse_mode="Markdown",
+    elif text.startswith("3") or "forex" in text.lower():
+        reply_markup = ReplyKeyboardMarkup(
+            forex_menu_keyboard, resize_keyboard=True, one_time_keyboard=False
         )
-        try:
-            res = await forex_coordinator.run({"pair": "EURUSD", "account_balance": 10000.0})
-            if res.is_success and res.data:
-                setup_id = str(uuid.uuid4())[:8]
-                context.bot_data[f"forex_setup_{setup_id}"] = res.data
-                card_text, reply_markup = format_forex_card(res.data, setup_id)
-                await safe_reply(update.message, card_text, reply_markup=reply_markup, parse_mode="Markdown")
-            else:
-                await update.message.reply_text(f"❌ Failed to analyze EURUSD: {res.error_message}")
-        except Exception as e:
-            logger.exception(f"Forex Agent execution error: {e}")
-            await update.message.reply_text(f"❌ Forex Agent Error: {e}")
-
-        reply_markup = ReplyKeyboardMarkup(main_menu_keyboard, resize_keyboard=True)
-        await safe_reply(update.message, "=== Chronos Master Menu ===", reply_markup=reply_markup)
-        return MAIN_MENU
+        await safe_reply(
+            update.message,
+            "--- 💱 Forex Trading Agent Menu ---\nChoose a quantitative action:",
+            reply_markup=reply_markup,
+        )
+        return FOREX_MENU
     elif text.startswith("4"):
         await update.message.reply_text(
             "This agent is still in production.\nChoose another agent or exit."
@@ -1588,7 +1768,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         setup_id = data.replace("forex_approve_", "")
         setup_data = context.bot_data.get(f"forex_setup_{setup_id}")
         if not setup_data:
-            await query.edit_message_text("⚠️ Setup data expired or not found. Run `/check_market` to refresh.")
+            await safe_edit_message_text(query, "⚠️ Setup data expired or not found. Run `/check_market` to refresh.")
             return
 
         memory_manager.record_forex_setup(setup_data)
@@ -1607,31 +1787,31 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
             f"• *Risk:* `{risk.get('actual_risk_pct', 1.0):.2f}%` (${risk.get('actual_risk_dollars', 100.0):.2f})\n"
             f"• *Position Size:* `{risk.get('recommended_lots', 0.01):.2f} Lots`\n"
             f"• *Risk/Reward:* `1:{risk.get('risk_reward_ratio', 2.0):.2f}`\n\n"
-            f"📝 *Status:* Setup logged for execution monitoring."
+            f"📝 *Status:* Setup logged to Agent Memory for execution monitoring."
         )
-        await query.edit_message_text(approved_msg, parse_mode="Markdown")
+        await safe_edit_message_text(query, approved_msg)
 
     elif data.startswith("forex_dismiss_"):
         setup_id = data.replace("forex_dismiss_", "")
         if f"forex_setup_{setup_id}" in context.bot_data:
             del context.bot_data[f"forex_setup_{setup_id}"]
-        await query.edit_message_text("🚫 *Market setup dismissed.*", parse_mode="Markdown")
+        await safe_edit_message_text(query, "🚫 *Market setup dismissed.*")
 
     elif data.startswith("forex_refresh_"):
         pair = data.replace("forex_refresh_", "")
-        await query.edit_message_text(f"⏳ Refreshing market analysis for *{pair}*...", parse_mode="Markdown")
+        await safe_edit_message_text(query, f"⏳ Refreshing quantitative market analysis for *{pair}*...")
         try:
             res = await forex_coordinator.run({"pair": pair, "account_balance": 10000.0})
             if res.is_success and res.data:
                 new_setup_id = str(uuid.uuid4())[:8]
                 context.bot_data[f"forex_setup_{new_setup_id}"] = res.data
                 card_text, reply_markup = format_forex_card(res.data, new_setup_id)
-                await query.edit_message_text(card_text, reply_markup=reply_markup, parse_mode="Markdown")
+                await safe_edit_message_text(query, card_text, reply_markup=reply_markup)
             else:
-                await query.edit_message_text(f"❌ Failed to refresh {pair}: {res.error_message}")
+                await safe_edit_message_text(query, f"❌ Failed to refresh {pair}: {res.error_message}")
         except Exception as e:
             logger.exception(f"Error during refresh: {e}")
-            await query.edit_message_text(f"❌ Error refreshing analysis: {e}")
+            await safe_edit_message_text(query, f"❌ Error refreshing analysis: {e}")
 
 
 def main():
@@ -1741,6 +1921,12 @@ def main():
                 MessageHandler(
                     filters.TEXT & ~filters.COMMAND, receive_interview_prep_url
                 )
+            ],
+            FOREX_MENU: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, forex_menu_handler)
+            ],
+            FOREX_CUSTOM_PAIR: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, receive_forex_pair)
             ],
         },
         fallbacks=[

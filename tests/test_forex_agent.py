@@ -460,3 +460,75 @@ def test_format_forex_card():
     assert "forex_approve_test1234" in callbacks
     assert "forex_dismiss_test1234" in callbacks
     assert "forex_refresh_EURUSD" in callbacks
+
+
+# ==========================================================
+# 6. Orchestrator Forex Menu & State Wiring Tests
+# ==========================================================
+@pytest.mark.asyncio
+async def test_orchestrator_main_menu_to_forex_menu():
+    from unittest.mock import AsyncMock, MagicMock
+    from orchestrator.telegram_orchestrator import (
+        main_menu_handler,
+        FOREX_MENU,
+        MAIN_MENU,
+        forex_menu_handler,
+        FOREX_CUSTOM_PAIR,
+        safe_reply,
+    )
+    from telegram import ReplyKeyboardMarkup
+
+    # Test main_menu_handler option "3"
+    update = MagicMock()
+    update.effective_chat = MagicMock(id=12345)
+    update.message = MagicMock()
+    update.message.text = "3. 💱 Forex Agent"
+    update.message.reply_text = AsyncMock()
+
+    context = MagicMock()
+    state = await main_menu_handler(update, context)
+    assert state == FOREX_MENU
+    assert update.message.reply_text.called
+    call_args = update.message.reply_text.call_args
+    assert "Forex Trading Agent Menu" in call_args[0][0]
+    assert isinstance(call_args[1]["reply_markup"], ReplyKeyboardMarkup)
+
+    # Test forex_menu_handler option "0" -> returns MAIN_MENU
+    update_back = MagicMock()
+    update_back.message = MagicMock()
+    update_back.message.text = "0. 🔙 Back to Main Menu"
+    update_back.message.reply_text = AsyncMock()
+
+    back_state = await forex_menu_handler(update_back, context)
+    assert back_state == MAIN_MENU
+
+    # Test forex_menu_handler option "4" -> returns FOREX_CUSTOM_PAIR
+    update_custom = MagicMock()
+    update_custom.message = MagicMock()
+    update_custom.message.text = "4. 💱 Custom Asset / Pair"
+    update_custom.message.reply_text = AsyncMock()
+
+    custom_state = await forex_menu_handler(update_custom, context)
+    assert custom_state == FOREX_CUSTOM_PAIR
+
+
+@pytest.mark.asyncio
+async def test_safe_reply_entity_parse_fallback():
+    from unittest.mock import AsyncMock, MagicMock
+    from orchestrator.telegram_orchestrator import safe_reply
+    from telegram.error import BadRequest
+
+    msg = MagicMock()
+    # Simulate Telegram throwing BadRequest when parsing entities on first attempt
+    async def mock_reply_text(text, parse_mode=None, **kwargs):
+        if parse_mode == "Markdown":
+            raise BadRequest("Can't parse entities: can't find end of the entity")
+        return "SUCCESS_PLAIN"
+
+    msg.reply_text = AsyncMock(side_effect=mock_reply_text)
+    
+    # Should catch BadRequest and fallback cleanly without crashing
+    res = await safe_reply(msg, "Broken *Markdown_ test text")
+    assert res == "SUCCESS_PLAIN"
+    assert msg.reply_text.call_count == 2
+
