@@ -225,10 +225,11 @@ class RegimeAnalyzer(BaseAgent):
                 f"Failed to fetch Yahoo candles for {pair} ({interval}): {e}"
             )
 
-        return self._generate_fallback_candles(pair=pair, count=50)
+        interval_sec = 900 if interval == "15m" else 3600
+        return self._generate_fallback_candles(pair=pair, count=50, interval_seconds=interval_sec)
 
     def _generate_fallback_candles(
-        self, pair: str, count: int = 50
+        self, pair: str, count: int = 50, interval_seconds: int = 3600
     ) -> list[Candle]:
         """Generates deterministic synthetic candles when external market data is unavailable."""
         base_prices = {
@@ -240,14 +241,15 @@ class RegimeAnalyzer(BaseAgent):
         }
         clean_pair = pair.upper().replace("/", "").replace("_", "")
         base_price = base_prices.get(clean_pair, 1.1000)
-        vol = 0.0015 if "JPY" not in clean_pair and "XAU" not in clean_pair else 0.25
+        base_vol = 0.0015 if "JPY" not in clean_pair and "XAU" not in clean_pair else 0.25
+        vol = base_vol * 0.5 if interval_seconds < 3600 else base_vol
 
         candles = []
         now_ts = int(datetime.now(timezone.utc).timestamp())
         price = base_price
 
         for i in range(count):
-            t = now_ts - (count - i) * 3600
+            t = now_ts - (count - i) * interval_seconds
             # Deterministic wave
             drift = np.sin(i / 5.0) * vol * 0.5
             noise = np.cos(i / 3.0) * vol * 0.2
@@ -458,7 +460,26 @@ class RegimeAnalyzer(BaseAgent):
         # 1. Market Sessions
         sessions_info = self.identify_market_sessions(ref_time=ref_time)
 
-        # 2. Ingest or fetch candles
+        # 2. Ingest or fetch candles (15M for Gold/Day Trading, 1H, 4H)
+        is_gold = "XAU" in pair or "GOLD" in pair
+        candles_15m_raw = payload.get("candles_15m")
+        if candles_15m_raw is not None:
+            candles_15m = [
+                Candle(
+                    timestamp=c["timestamp"],
+                    open=float(c["open"]),
+                    high=float(c["high"]),
+                    low=float(c["low"]),
+                    close=float(c["close"]),
+                    volume=float(c.get("volume", 0.0)),
+                )
+                for c in candles_15m_raw
+            ]
+        elif is_gold or payload.get("mode") == "day_trade" or payload.get("include_15m", False):
+            candles_15m = self.fetch_yahoo_candles(pair=pair, interval="15m", range_period="2d")
+        else:
+            candles_15m = []
+
         candles_1h_raw = payload.get("candles_1h")
         if candles_1h_raw is not None:
             candles_1h = [
@@ -491,7 +512,8 @@ class RegimeAnalyzer(BaseAgent):
         else:
             candles_4h = self.resample_to_4h(candles_1h)
 
-        # 3. Calculate 1H and 4H regimes
+        # 3. Calculate 15M (if available), 1H, and 4H regimes
+        regime_15m = self.evaluate_timeframe(candles_15m, "15M") if candles_15m else None
         regime_1h = self.evaluate_timeframe(candles_1h, "1H")
         regime_4h = self.evaluate_timeframe(candles_4h, "4H")
 
@@ -509,22 +531,32 @@ class RegimeAnalyzer(BaseAgent):
             aligned_trend = "CHOP_CONFLICT"
             alignment_status = "TIMEFRAME_CONFLICT"
 
-        latest_close = candles_1h[-1].close if candles_1h else 1.0
+        # Prioritize most granular live price (15M -> 1H)
+        if candles_15m:
+            latest_close = candles_15m[-1].close
+        elif candles_1h:
+            latest_close = candles_1h[-1].close
+        else:
+            latest_close = 1.0
 
         key_support = min(regime_1h.swing_low, regime_4h.swing_low)
         key_resistance = max(regime_1h.swing_high, regime_4h.swing_high)
 
+        res_data = {
+            "pair": pair,
+            "current_price": round(latest_close, 5),
+            "aligned_trend": aligned_trend,
+            "alignment_status": alignment_status,
+            "regime_1h": regime_1h.to_dict(),
+            "regime_4h": regime_4h.to_dict(),
+            "key_support": round(key_support, 5),
+            "key_resistance": round(key_resistance, 5),
+            "market_sessions": sessions_info,
+        }
+        if regime_15m:
+            res_data["regime_15m"] = regime_15m.to_dict()
+
         return AgentResult(
             status=AgentStatus.SUCCESS,
-            data={
-                "pair": pair,
-                "current_price": round(latest_close, 5),
-                "aligned_trend": aligned_trend,
-                "alignment_status": alignment_status,
-                "regime_1h": regime_1h.to_dict(),
-                "regime_4h": regime_4h.to_dict(),
-                "key_support": round(key_support, 5),
-                "key_resistance": round(key_resistance, 5),
-                "market_sessions": sessions_info,
-            },
+            data=res_data,
         )

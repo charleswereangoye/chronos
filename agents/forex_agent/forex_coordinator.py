@@ -38,6 +38,8 @@ class ForexCoordinator(BaseAgent):
         """Runs the complete 4-step pipeline and produces an institutional trade setup."""
         pair = pair.upper().strip()
         custom_payload = custom_payload or {}
+        is_gold = "XAU" in pair or "GOLD" in pair
+        mode = "day_trade" if is_gold else custom_payload.get("mode", "swing")
 
         # Step 1: Macro Gatekeeper
         calendar_payload = {
@@ -53,6 +55,7 @@ class ForexCoordinator(BaseAgent):
         # Step 2: Deterministic Regime Analysis
         regime_payload = {
             "pair": pair,
+            "mode": mode,
             "reference_time": reference_time,
             **custom_payload.get("regime", {}),
         }
@@ -127,6 +130,7 @@ class ForexCoordinator(BaseAgent):
             "risk_evaluation": risk_data,
             "thesis": thesis,
             "sessions": regime_data.get("market_sessions", {}),
+            "regime_15m": regime_data.get("regime_15m"),
             "regime_1h": regime_data.get("regime_1h", {}),
             "regime_4h": regime_data.get("regime_4h", {}),
             "high_impact_events": calendar_data.get("high_impact_events", []),

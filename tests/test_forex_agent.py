@@ -502,14 +502,71 @@ async def test_orchestrator_main_menu_to_forex_menu():
     back_state = await forex_menu_handler(update_back, context)
     assert back_state == MAIN_MENU
 
-    # Test forex_menu_handler option "4" -> returns FOREX_CUSTOM_PAIR
-    update_custom = MagicMock()
-    update_custom.message = MagicMock()
-    update_custom.message.text = "4. 💱 Custom Asset / Pair"
-    update_custom.message.reply_text = AsyncMock()
+    # Test forex_menu_handler option "2" (Quick Check Other Pair) -> returns FOREX_CUSTOM_PAIR
+    update_quick = MagicMock()
+    update_quick.message = MagicMock()
+    update_quick.message.text = "2. ⚡ Quick Check Other Pair"
+    update_quick.message.reply_text = AsyncMock()
 
-    custom_state = await forex_menu_handler(update_custom, context)
-    assert custom_state == FOREX_CUSTOM_PAIR
+    quick_state = await forex_menu_handler(update_quick, context)
+    assert quick_state == FOREX_CUSTOM_PAIR
+
+    # Test receive_forex_pair cancel -> returns FOREX_MENU
+    from orchestrator.telegram_orchestrator import receive_forex_pair
+    update_cancel = MagicMock()
+    update_cancel.message = MagicMock()
+    update_cancel.message.text = "0. 🔙 Back to Forex Menu"
+    update_cancel.message.reply_text = AsyncMock()
+
+    cancel_state = await receive_forex_pair(update_cancel, context)
+    assert cancel_state == FOREX_MENU
+
+
+@pytest.mark.asyncio
+async def test_format_forex_card_gold_day_trading():
+    from orchestrator.telegram_orchestrator import format_forex_card
+
+    sample_gold = {
+        "pair": "XAUUSD",
+        "market_bias": "BULLISH",
+        "trade_action": "READY_FOR_HITL_REVIEW",
+        "current_price": 2650.50,
+        "key_levels": {
+            "entry_range": "2649.50 - 2651.00",
+            "entry_price": 2650.50,
+            "stop_loss": 2645.50,
+            "target": 2662.50,
+            "invalidation": 2645.50,
+        },
+        "risk_evaluation": {
+            "is_approved": True,
+            "risk_reward_ratio": 2.4,
+            "risk_pips": 50.0,
+            "reward_pips": 120.0,
+            "actual_risk_pct": 1.0,
+            "actual_risk_dollars": 100.0,
+            "recommended_lots": 0.20,
+        },
+        "sessions": {
+            "active_sessions": ["London Open", "London Session"],
+            "liquidity_rating": "PEAK",
+        },
+        "regime_15m": {
+            "trend": "BULLISH",
+            "rsi_14": 58.5,
+            "atr_14": 4.5,
+        },
+        "thesis": "Gold intraday structure confirms 15M EMA pullback with strong institutional buying.",
+        "defensive_hold": False,
+    }
+
+    card_text, markup = format_forex_card(sample_gold, "gold1234")
+    assert "CHRONOS GOLD (XAUUSD) DAY TRADE & SCALP ALERT" in card_text
+    assert "XAUUSD" in card_text
+    assert "Intraday Scalp & Day Trade" in card_text
+    assert "15M Structure" in card_text
+    assert "2650.50" in card_text
+    assert "1:2.40" in card_text
 
 
 @pytest.mark.asyncio

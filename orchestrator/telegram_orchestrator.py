@@ -150,12 +150,17 @@ main_menu_keyboard = [
 ]
 
 forex_menu_keyboard = [
-    ["1. ⚡ Quick Check (EURUSD)"],
-    ["2. 🥇 Analyze Gold (XAUUSD)"],
-    ["3. 🇬🇧 Analyze Cable (GBPUSD)"],
-    ["4. 💱 Custom Asset / Pair"],
-    ["5. 🛡️ Macro News & Calendar Shield"],
+    ["1. 🥇 Analyze Gold (XAUUSD) — Day Trade & Scalp"],
+    ["2. ⚡ Quick Check Other Pair"],
+    ["3. 🛡️ Macro News & Calendar Shield"],
     ["0. 🔙 Back to Main Menu"],
+]
+
+quick_pairs_keyboard = [
+    ["EURUSD", "GBPUSD"],
+    ["USDJPY", "BTCUSD"],
+    ["AUDUSD", "USDCAD"],
+    ["0. 🔙 Back to Forex Menu"],
 ]
 
 job_seeking_menu_keyboard = [
@@ -522,9 +527,10 @@ async def execute_original_source_search(update, context):
 
 def format_forex_card(setup: dict, setup_id: str) -> tuple[str, InlineKeyboardMarkup]:
     """Renders a structured Telegram card for the forex trade setup with action buttons."""
-    pair = setup.get("pair", "EURUSD")
+    pair = setup.get("pair", "XAUUSD")
     action = setup.get("trade_action", "READY_FOR_HITL_REVIEW")
     bias = setup.get("market_bias", "NEUTRAL")
+    is_gold = "XAU" in pair.upper() or "GOLD" in pair.upper()
     try:
         current_price = float(setup.get("current_price") or 0.0)
     except (ValueError, TypeError):
@@ -536,6 +542,7 @@ def format_forex_card(setup: dict, setup_id: str) -> tuple[str, InlineKeyboardMa
     thesis = setup.get("thesis", "")
     defensive_hold = setup.get("defensive_hold", False)
     hold_reason = setup.get("hold_reason", "")
+    regime_15m = setup.get("regime_15m")
 
     bias_emoji = "🟢" if bias == "BULLISH" else ("🔴" if bias == "BEARISH" else "⚪")
     try:
@@ -566,17 +573,39 @@ def format_forex_card(setup: dict, setup_id: str) -> tuple[str, InlineKeyboardMa
     # Sanitize thesis so markdown entities don't break Telegram parsing
     clean_thesis = str(thesis).replace("*", "").replace("_", " ").replace("`", "'").replace("[", "(").replace("]", ")").strip()
 
+    price_str = f"{current_price:.2f}" if is_gold else f"{current_price:.5f}"
+
+    if is_gold:
+        header = "🥇 *CHRONOS GOLD (XAUUSD) DAY TRADE & SCALP ALERT*"
+        style_line = "• *Execution Profile:* `Intraday Scalp & Day Trade`\n"
+        if regime_15m:
+            r_trend = regime_15m.get("trend", "ALIGNED")
+            try:
+                r_rsi = float(regime_15m.get("rsi_14", 50.0))
+                r_atr = float(regime_15m.get("atr_14", 5.0))
+            except (ValueError, TypeError):
+                r_rsi, r_atr = 50.0, 5.0
+            intraday_line = f"⏱️ *15M Structure:* `{r_trend}` (RSI: `{r_rsi:.1f}` | 15M ATR: `${r_atr:.2f}`)\n\n"
+        else:
+            intraday_line = ""
+    else:
+        header = "💱 *CHRONOS QUANTITATIVE FOREX ALERT*"
+        style_line = ""
+        intraday_line = ""
+
     card = (
-        f"💱 *CHRONOS QUANTITATIVE FOREX ALERT*\n"
+        f"{header}\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"*Asset:* `{pair}` | *Price:* `{current_price:.5f}`\n"
+        f"*Asset:* `{pair}` | *Spot Price:* `{price_str}`\n"
         f"*Bias:* {bias_emoji} *{bias}* | *Status:* `{action}`\n"
         f"{hold_banner}\n"
         f"🎯 *Key Execution Levels:*\n"
+        f"{style_line}"
         f"• *Entry Range:* `{key_levels.get('entry_range', key_levels.get('entry_price'))}`\n"
         f"• *Stop Loss:* `{key_levels.get('stop_loss')}` ({risk_pips:.1f} pips)\n"
-        f"• *Target:* `{key_levels.get('target')}` ({reward_pips:.1f} pips)\n"
+        f"• *Target (TP):* `{key_levels.get('target')}` ({reward_pips:.1f} pips)\n"
         f"• *Invalidation:* `{key_levels.get('invalidation')}`\n\n"
+        f"{intraday_line}"
         f"🛡️ *Risk Guard Constraints:*\n"
         f"• *Risk-to-Reward:* `1:{rr_val:.2f}` {rr_icon} (Min 1:2.0)\n"
         f"• *Account Risk:* `{actual_risk_pct:.2f}%` (Max 1.0% | ${actual_risk_dollars:.2f})\n"
@@ -602,12 +631,16 @@ def format_forex_card(setup: dict, setup_id: str) -> tuple[str, InlineKeyboardMa
 async def run_forex_analysis(update: Update, context: ContextTypes.DEFAULT_TYPE, pair: str):
     """Executes the full quantitative Forex pipeline for a specified pair."""
     pair = pair.upper().replace("/", "").strip()
-    await safe_reply(
-        update.message,
-        f"⏳ Running quantitative market check for *{pair}*...\n_Analyzing Multi-Timeframe Candles, High-Impact Macro Shield, and Institutional Liquidity..._",
-    )
+    is_gold = "XAU" in pair or "GOLD" in pair
+    if is_gold:
+        msg = "⏳ Running quantitative analysis for *Gold (XAUUSD)*...\n_Scanning 15M Scalp Structure, 1H/4H Macro Trend, Asian Range Liquidity, and Risk-to-Reward Ratio..._"
+    else:
+        msg = f"⏳ Running quantitative market check for *{pair}*...\n_Analyzing Multi-Timeframe Candles, High-Impact Macro Shield, and Institutional Liquidity..._"
+
+    await safe_reply(update.message, msg)
     try:
-        res = await forex_coordinator.run({"pair": pair, "account_balance": 10000.0})
+        mode = "day_trade" if is_gold else "swing"
+        res = await forex_coordinator.run({"pair": pair, "account_balance": 10000.0, "mode": mode})
         if res.is_success and res.data:
             setup_id = str(uuid.uuid4())[:8]
             context.bot_data[f"forex_setup_{setup_id}"] = res.data
@@ -643,30 +676,25 @@ async def forex_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         )
         return MAIN_MENU
 
-    elif text.startswith("1") or "eurusd" in text.lower():
-        return await run_forex_analysis(update, context, "EURUSD")
-
-    elif text.startswith("2") or "gold" in text.lower() or "xauusd" in text.lower():
+    elif text.startswith("1") or "gold" in text.lower() or "xau" in text.lower():
         return await run_forex_analysis(update, context, "XAUUSD")
 
-    elif text.startswith("3") or "gbpusd" in text.lower() or "cable" in text.lower():
-        return await run_forex_analysis(update, context, "GBPUSD")
-
-    elif text.startswith("4") or "custom" in text.lower():
+    elif text.startswith("2") or "quick" in text.lower() or "other" in text.lower():
+        reply_markup = ReplyKeyboardMarkup(quick_pairs_keyboard, resize_keyboard=True)
         await safe_reply(
             update.message,
-            "💱 Please send the ticker or currency pair you want to analyze (e.g. `USDJPY`, `AUDUSD`, `USDCHF`, `NZDUSD`, `USDCAD`, `XAUUSD`):",
-            reply_markup=ReplyKeyboardMarkup([["0. 🔙 Cancel"]], resize_keyboard=True),
+            "💱 *Quick Market Check*\n\nSelect a pair below or type any symbol to analyze (e.g. `EURUSD`, `USDJPY`, `GBPUSD`, `BTCUSD`):",
+            reply_markup=reply_markup,
         )
         return FOREX_CUSTOM_PAIR
 
-    elif text.startswith("5") or "calendar" in text.lower() or "shield" in text.lower():
+    elif text.startswith("3") or "calendar" in text.lower() or "shield" in text.lower():
         await safe_reply(
             update.message,
-            "⏳ Ingesting macroeconomic calendar feeds and evaluating news shield...",
+            "⏳ Ingesting macroeconomic calendar feeds and evaluating news shield for Gold & FX...",
         )
         try:
-            res = await calendar_monitor.run({"pair": "EURUSD"})
+            res = await calendar_monitor.run({"pair": "XAUUSD"})
             if res.is_success and res.data:
                 events = res.data.get("upcoming_high_impact", [])
                 is_hold = res.data.get("defensive_hold", False)
@@ -714,11 +742,11 @@ async def forex_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 
 async def receive_forex_pair(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Receives custom pair symbol from user and runs analysis."""
+    """Receives custom or selected pair symbol from user and runs analysis."""
     text = update.message.text.strip()
-    if text.startswith("0") or "cancel" in text.lower():
+    if text.startswith("0") or "back" in text.lower() or "cancel" in text.lower():
         reply_markup = ReplyKeyboardMarkup(forex_menu_keyboard, resize_keyboard=True)
-        await safe_reply(update.message, "Cancelled custom pair analysis.", reply_markup=reply_markup)
+        await safe_reply(update.message, "Returned to Forex menu.", reply_markup=reply_markup)
         return FOREX_MENU
 
     pair = text.upper().replace("/", "").replace(" ", "").strip()
@@ -726,17 +754,19 @@ async def receive_forex_pair(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 
 async def check_market_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handles the /check_market [PAIR] command."""
-    pair = "EURUSD"
+    """Handles the /check_market [PAIR] command (defaults to Gold / XAUUSD)."""
+    pair = "XAUUSD"
     if context.args and len(context.args) > 0:
         pair = context.args[0].upper().replace("/", "").strip()
 
+    is_gold = "XAU" in pair or "GOLD" in pair
     await safe_reply(
         update.message,
         f"⏳ Running quantitative market check for *{pair}*...",
     )
     try:
-        res = await forex_coordinator.run({"pair": pair, "account_balance": 10000.0})
+        mode = "day_trade" if is_gold else "swing"
+        res = await forex_coordinator.run({"pair": pair, "account_balance": 10000.0, "mode": mode})
         if not res.is_success or not res.data:
             await safe_reply(update.message, f"❌ Failed to analyze market for {pair}: {res.error_message}")
             return

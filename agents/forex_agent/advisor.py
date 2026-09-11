@@ -29,49 +29,78 @@ class ForexAdvisor(BaseAgent):
         trend = regime_data.get("aligned_trend", "RANGE").upper()
         current_price = float(regime_data.get("current_price", 1.0850))
         regime_1h = regime_data.get("regime_1h", {})
-        atr = float(regime_1h.get("atr_14", 0.0015))
+        regime_15m = regime_data.get("regime_15m", {})
+        is_gold = "XAU" in pair.upper() or "GOLD" in pair.upper()
+
+        # For Gold or intraday scalping, prioritize 15M ATR for tighter day-trading bounds
+        if regime_15m and float(regime_15m.get("atr_14", 0.0)) > 0:
+            atr = float(regime_15m["atr_14"])
+        else:
+            atr = float(regime_1h.get("atr_14", 0.0015))
         if atr <= 0:
-            atr = 0.0015
+            atr = 5.0 if is_gold else 0.0015
 
         defensive_hold = calendar_data.get("defensive_hold", False)
         hold_reason = calendar_data.get("hold_reason", "")
 
+        decimals = 2 if is_gold or "JPY" in pair.upper() else 5
+        sl_multiplier = 1.2 if (is_gold or regime_15m) else 1.5
+        tp_multiplier = 2.6 if (is_gold or regime_15m) else 3.5
+
         if trend == "BULLISH":
             bias = "BULLISH"
             entry_price = current_price
-            entry_low = round(entry_price - 0.2 * atr, 5)
-            entry_high = round(entry_price + 0.2 * atr, 5)
-            stop_loss = round(entry_price - 1.5 * atr, 5)
+            entry_low = round(entry_price - 0.15 * atr, decimals)
+            entry_high = round(entry_price + 0.1 * atr, decimals)
+            stop_loss = round(entry_price - sl_multiplier * atr, decimals)
             invalidation = stop_loss
-            target = round(entry_price + 3.5 * atr, 5)  # R:R = 3.5 / 1.5 = 2.33
-            thesis = (
-                f"{pair} exhibits confirmed higher timeframe bullish structure above the 1H/4H EMAs with supportive volume. "
-                f"We favor long exposure on pullbacks toward support with structural invalidation below {invalidation}."
-            )
+            target = round(entry_price + tp_multiplier * atr, decimals)
+            if is_gold:
+                thesis = (
+                    f"Gold (XAUUSD) Day Trade & Scalp: Price respects 15M EMA dynamic support aligned with broader market structure. "
+                    f"We initiate long scalp exposure on pullbacks toward support with thesis invalidation below {invalidation}."
+                )
+            else:
+                thesis = (
+                    f"{pair} exhibits confirmed higher timeframe bullish structure above the 1H/4H EMAs with supportive volume. "
+                    f"We favor long exposure on pullbacks toward support with structural invalidation below {invalidation}."
+                )
         elif trend == "BEARISH":
             bias = "BEARISH"
             entry_price = current_price
-            entry_low = round(entry_price - 0.2 * atr, 5)
-            entry_high = round(entry_price + 0.2 * atr, 5)
-            stop_loss = round(entry_price + 1.5 * atr, 5)
+            entry_low = round(entry_price - 0.1 * atr, decimals)
+            entry_high = round(entry_price + 0.15 * atr, decimals)
+            stop_loss = round(entry_price + sl_multiplier * atr, decimals)
             invalidation = stop_loss
-            target = round(entry_price - 3.5 * atr, 5)  # R:R = 3.5 / 1.5 = 2.33
-            thesis = (
-                f"{pair} trades in a sustained bearish regime rejected by dynamic resistance across higher timeframes. "
-                f"Short setups target liquidity pools below with thesis invalidation placed strictly above {invalidation}."
-            )
+            target = round(entry_price - tp_multiplier * atr, decimals)
+            if is_gold:
+                thesis = (
+                    f"Gold (XAUUSD) Day Trade & Scalp: Spot price rejects dynamic resistance with 15M EMA cluster confirming intraday supply. "
+                    f"Short scalp orders target local liquidity pools below, invalidating strictly above {invalidation}."
+                )
+            else:
+                thesis = (
+                    f"{pair} trades in a sustained bearish regime rejected by dynamic resistance across higher timeframes. "
+                    f"Short setups target liquidity pools below with thesis invalidation placed strictly above {invalidation}."
+                )
         else:
             bias = "NEUTRAL"
             entry_price = current_price
-            entry_low = round(entry_price - 0.1 * atr, 5)
-            entry_high = round(entry_price + 0.1 * atr, 5)
-            stop_loss = round(entry_price - 1.5 * atr, 5)
+            entry_low = round(entry_price - 0.1 * atr, decimals)
+            entry_high = round(entry_price + 0.1 * atr, decimals)
+            stop_loss = round(entry_price - sl_multiplier * atr, decimals)
             invalidation = stop_loss
-            target = round(entry_price + 3.0 * atr, 5)
-            thesis = (
-                f"{pair} remains locked in horizontal consolidation between key structural bounds without directional conviction. "
-                "Capital preservation is prioritized until a definitive breakout establishes institutional order flow."
-            )
+            target = round(entry_price + tp_multiplier * atr, decimals)
+            if is_gold:
+                thesis = (
+                    f"Gold (XAUUSD) Intraday Standby: Gold consolidates in a narrow range ahead of institutional liquidity catalysts. "
+                    "Scalp entries are withheld until price sweeps session boundaries with confirmed volume."
+                )
+            else:
+                thesis = (
+                    f"{pair} remains locked in horizontal consolidation between key structural bounds without directional conviction. "
+                    "Capital preservation is prioritized until a definitive breakout establishes institutional order flow."
+                )
 
         if defensive_hold:
             thesis = (
@@ -83,7 +112,7 @@ class ForexAdvisor(BaseAgent):
             "market_bias": bias,
             "key_levels": {
                 "entry_range": f"{entry_low} - {entry_high}",
-                "entry_price": round(entry_price, 5),
+                "entry_price": round(entry_price, decimals),
                 "invalidation": invalidation,
                 "stop_loss": stop_loss,
                 "target": target,
@@ -100,6 +129,7 @@ class ForexAdvisor(BaseAgent):
         """Prompts Gemini with market context to generate a structured trade briefing."""
         current_price = regime_data.get("current_price", 1.0)
         aligned_trend = regime_data.get("aligned_trend", "RANGE")
+        regime_15m = regime_data.get("regime_15m", {})
         regime_1h = regime_data.get("regime_1h", {})
         regime_4h = regime_data.get("regime_4h", {})
         sessions = regime_data.get("market_sessions", {})
@@ -107,13 +137,25 @@ class ForexAdvisor(BaseAgent):
         defensive_hold = calendar_data.get("defensive_hold", False)
         hold_reason = calendar_data.get("hold_reason", "")
         atr = float(regime_1h.get("atr_14", 0.0015))
+        is_gold = "XAU" in pair.upper() or "GOLD" in pair.upper()
+
+        intraday_section = ""
+        if is_gold or regime_15m:
+            intraday_section = (
+                f"\n- 15M Intraday Scalp Regime: Trend={regime_15m.get('trend', 'N/A')}, "
+                f"EMA20={regime_15m.get('ema_20', 'N/A')}, EMA50={regime_15m.get('ema_50', 'N/A')}, "
+                f"RSI14={regime_15m.get('rsi_14', 'N/A')}, 15M ATR={regime_15m.get('atr_14', 'N/A')}\n"
+                "- TRADING PROFILE: INTRADAY DAY TRADER & SCALPER. "
+                "Provide precise intraday execution levels for scalping/day trading, using 15M pullbacks/sweeps. "
+                "Ensure a tight structural stop loss and a realistic target honoring >= 1:2.0 Risk-to-Reward ratio."
+            )
 
         default_fallback = self._build_deterministic_fallback(
             pair=pair, regime_data=regime_data, calendar_data=calendar_data
         )
 
         prompt = f"""
-You are an Elite Institutional FX Quantitative Strategist and Senior Risk Manager.
+You are an Elite Institutional FX & Gold Quantitative Strategist and Senior Risk Manager.
 Synthesize the technical market regime and macroeconomic calendar into a high-conviction trade briefing for {pair}.
 
 === MARKET REGIME CONTEXT ===
@@ -122,7 +164,7 @@ Synthesize the technical market regime and macroeconomic calendar into a high-co
 - Higher Timeframe Trend: {aligned_trend}
 - 1H Regime: Trend={regime_1h.get('trend')}, EMA20={regime_1h.get('ema_20')}, EMA50={regime_1h.get('ema_50')}, RSI14={regime_1h.get('rsi_14')}, ATR14={atr}
 - 4H Regime: Trend={regime_4h.get('trend')}, Swing High={regime_4h.get('swing_high')}, Swing Low={regime_4h.get('swing_low')}
-- Active Market Sessions: {sessions.get('active_sessions')} (Liquidity Rating: {sessions.get('liquidity_rating')})
+- Active Market Sessions: {sessions.get('active_sessions')} (Liquidity Rating: {sessions.get('liquidity_rating')}){intraday_section}
 
 === MACROECONOMIC CALENDAR CONTEXT ===
 - Defensive Hold Status: {'ACTIVE DEFENSIVE_HOLD' if defensive_hold else 'NORMAL MARKET EXECUTION'}
