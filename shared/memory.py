@@ -1,8 +1,7 @@
 import json
 import os
-import tempfile
 import threading
-from typing import Dict, Any, List, Optional
+
 from shared.config import HISTORY_FILE_PATH
 from shared.logger import get_logger
 
@@ -15,7 +14,7 @@ class MemoryManager:
     """
     _lock = threading.Lock()
 
-    def __init__(self, history_path: Optional[str] = None):
+    def __init__(self, history_path: str | None = None):
         self.history_path = history_path or HISTORY_FILE_PATH
 
     def load_history(self) -> dict:
@@ -25,6 +24,7 @@ class MemoryManager:
             "last_emotional_filter": "None",
             "used_video_templates": [],
             "job_applications": [],
+            "forex_setups": [],
             "metadata": {}
         }
         with self._lock:
@@ -56,6 +56,8 @@ class MemoryManager:
                 history_data["used_video_templates"] = history_data["used_video_templates"][-50:]
             if "job_applications" in history_data:
                 history_data["job_applications"] = history_data["job_applications"][-100:]
+            if "forex_setups" in history_data:
+                history_data["forex_setups"] = history_data["forex_setups"][-50:]
                 
             target_dir = os.path.dirname(self.history_path)
             os.makedirs(target_dir, exist_ok=True)
@@ -67,7 +69,7 @@ class MemoryManager:
                     json.dump(history_data, f, indent=4)
                 os.replace(temp_file, self.history_path)
                 logger.info("History saved atomically.")
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 logger.error(f"Failed to save history atomically: {e}")
                 if os.path.exists(temp_file):
                     try:
@@ -107,4 +109,11 @@ class MemoryManager:
             "company": company,
             "url": url
         })
+        self.save_history(history_data)
+
+    def record_forex_setup(self, setup_data: dict):
+        history_data = self.load_history()
+        if "forex_setups" not in history_data:
+            history_data["forex_setups"] = []
+        history_data["forex_setups"].append(setup_data)
         self.save_history(history_data)

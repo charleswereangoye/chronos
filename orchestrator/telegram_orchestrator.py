@@ -21,6 +21,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from shared.config import TELEGRAM_BOT_TOKEN
 from agents.social_agent.social_coordinator import SocialAgentCoordinator
+from agents.forex_agent.forex_coordinator import ForexCoordinator
+from shared.memory import MemoryManager
 from orchestrator.scheduler import AutonomousScheduler
 
 logging.basicConfig(
@@ -29,6 +31,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 coordinator = SocialAgentCoordinator()
+forex_coordinator = ForexCoordinator()
+memory_manager = MemoryManager()
 scheduler = None
 
 async def safe_reply(message_target, text, reply_markup=None, parse_mode="Markdown", **kwargs):
@@ -471,6 +475,92 @@ async def execute_original_source_search(update, context):
     return MAIN_MENU
 
 
+def format_forex_card(setup: dict, setup_id: str) -> tuple[str, InlineKeyboardMarkup]:
+    """Renders a structured Telegram card for the forex trade setup with action buttons."""
+    pair = setup.get("pair", "EURUSD")
+    action = setup.get("trade_action", "READY_FOR_HITL_REVIEW")
+    bias = setup.get("market_bias", "NEUTRAL")
+    current_price = setup.get("current_price", 0.0)
+    key_levels = setup.get("key_levels", {})
+    risk = setup.get("risk_evaluation", {})
+    sessions = setup.get("sessions", {})
+    thesis = setup.get("thesis", "")
+    defensive_hold = setup.get("defensive_hold", False)
+    hold_reason = setup.get("hold_reason", "")
+
+    bias_emoji = "🟢" if bias == "BULLISH" else ("🔴" if bias == "BEARISH" else "⚪")
+    rr_val = risk.get("risk_reward_ratio", 0.0)
+    is_approved = risk.get("is_approved", False)
+    rr_icon = "✅" if is_approved and rr_val >= 2.0 else "⚠️"
+
+    hold_banner = ""
+    if defensive_hold:
+        hold_banner = f"\n⚠️ *DEFENSIVE HOLD ACTIVE*\n_{hold_reason}_\n"
+
+    active_sessions_list = sessions.get("active_sessions", ["Active"])
+    sessions_str = ", ".join(active_sessions_list) if active_sessions_list else "Off-Hours"
+    liquidity_rating = sessions.get("liquidity_rating", "MODERATE")
+
+    card = (
+        f"💱 *CHRONOS QUANTITATIVE FOREX ALERT*\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"*Asset:* `{pair}` | *Price:* `{current_price:.5f}`\n"
+        f"*Bias:* {bias_emoji} *{bias}* | *Status:* `{action}`\n"
+        f"{hold_banner}\n"
+        f"🎯 *Key Execution Levels:*\n"
+        f"• *Entry Range:* `{key_levels.get('entry_range', key_levels.get('entry_price'))}`\n"
+        f"• *Stop Loss:* `{key_levels.get('stop_loss')}` ({risk.get('risk_pips', 0.0):.1f} pips)\n"
+        f"• *Target:* `{key_levels.get('target')}` ({risk.get('reward_pips', 0.0):.1f} pips)\n"
+        f"• *Invalidation:* `{key_levels.get('invalidation')}`\n\n"
+        f"🛡️ *Risk Guard Constraints:*\n"
+        f"• *Risk-to-Reward:* `1:{rr_val:.2f}` {rr_icon} (Min 1:2.0)\n"
+        f"• *Account Risk:* `{risk.get('actual_risk_pct', 1.0):.2f}%` (Max 1.0% | ${risk.get('actual_risk_dollars', 100.0):.2f})\n"
+        f"• *Recommended Sizing:* `{risk.get('recommended_lots', 0.01):.2f} Lots`\n\n"
+        f"🏛️ *Market Sessions:* {sessions_str} ({liquidity_rating} Liquidity)\n\n"
+        f"💡 *Institutional Thesis:*\n_{thesis}_\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"_Human-In-The-Loop (HITL) Review Required._"
+    )
+
+    keyboard = [
+        [
+            InlineKeyboardButton("✅ Approve / Log Setup", callback_data=f"forex_approve_{setup_id}"),
+            InlineKeyboardButton("🔄 Refresh", callback_data=f"forex_refresh_{pair}"),
+        ],
+        [
+            InlineKeyboardButton("❌ Dismiss", callback_data=f"forex_dismiss_{setup_id}"),
+        ],
+    ]
+    return card, InlineKeyboardMarkup(keyboard)
+
+
+async def check_market_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handles the /check_market [PAIR] command."""
+    pair = "EURUSD"
+    if context.args and len(context.args) > 0:
+        pair = context.args[0].upper().strip()
+
+    await update.message.reply_text(
+        f"⏳ Running quantitative market check for *{pair}*...",
+        parse_mode="Markdown",
+    )
+    try:
+        res = await forex_coordinator.run({"pair": pair, "account_balance": 10000.0})
+        if not res.is_success or not res.data:
+            await update.message.reply_text(f"❌ Failed to analyze market for {pair}: {res.error_message}")
+            return
+
+        setup_id = str(uuid.uuid4())[:8]
+        setup_data = res.data
+        context.bot_data[f"forex_setup_{setup_id}"] = setup_data
+
+        card_text, reply_markup = format_forex_card(setup_data, setup_id)
+        await safe_reply(update.message, card_text, reply_markup=reply_markup, parse_mode="Markdown")
+    except Exception as e:
+        logger.exception(f"Error in check_market_command: {e}")
+        await update.message.reply_text(f"❌ Error during market check: {e}")
+
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global scheduler
     if scheduler and update.effective_chat:
@@ -515,7 +605,28 @@ async def main_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=reply_markup,
         )
         return JOB_SEEKING_MENU
-    elif text.startswith("3") or text.startswith("4"):
+    elif text.startswith("3"):
+        await update.message.reply_text(
+            "⏳ Running quantitative market check for *EURUSD*...\n_(Tip: You can also use `/check_market [PAIR]` directly for any pair like GBPUSD, USDJPY, or XAUUSD)_",
+            parse_mode="Markdown",
+        )
+        try:
+            res = await forex_coordinator.run({"pair": "EURUSD", "account_balance": 10000.0})
+            if res.is_success and res.data:
+                setup_id = str(uuid.uuid4())[:8]
+                context.bot_data[f"forex_setup_{setup_id}"] = res.data
+                card_text, reply_markup = format_forex_card(res.data, setup_id)
+                await safe_reply(update.message, card_text, reply_markup=reply_markup, parse_mode="Markdown")
+            else:
+                await update.message.reply_text(f"❌ Failed to analyze EURUSD: {res.error_message}")
+        except Exception as e:
+            logger.exception(f"Forex Agent execution error: {e}")
+            await update.message.reply_text(f"❌ Forex Agent Error: {e}")
+
+        reply_markup = ReplyKeyboardMarkup(main_menu_keyboard, resize_keyboard=True)
+        await safe_reply(update.message, "=== Chronos Master Menu ===", reply_markup=reply_markup)
+        return MAIN_MENU
+    elif text.startswith("4"):
         await update.message.reply_text(
             "This agent is still in production.\nChoose another agent or exit."
         )
@@ -1473,6 +1584,55 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         except Exception as e:
             await query.edit_message_text(f"❌ Failed to regenerate: {e}")
 
+    elif data.startswith("forex_approve_"):
+        setup_id = data.replace("forex_approve_", "")
+        setup_data = context.bot_data.get(f"forex_setup_{setup_id}")
+        if not setup_data:
+            await query.edit_message_text("⚠️ Setup data expired or not found. Run `/check_market` to refresh.")
+            return
+
+        memory_manager.record_forex_setup(setup_data)
+        pair = setup_data.get("pair", "UNKNOWN")
+        bias = setup_data.get("market_bias", "")
+        levels = setup_data.get("key_levels", {})
+        risk = setup_data.get("risk_evaluation", {})
+
+        approved_msg = (
+            f"✅ *TRADE SETUP APPROVED & LOGGED TO JOURNAL*\n\n"
+            f"• *Asset:* `{pair}`\n"
+            f"• *Bias:* `{bias}`\n"
+            f"• *Entry Range:* `{levels.get('entry_range', levels.get('entry_price'))}`\n"
+            f"• *Stop Loss:* `{levels.get('stop_loss')}`\n"
+            f"• *Target:* `{levels.get('target')}`\n"
+            f"• *Risk:* `{risk.get('actual_risk_pct', 1.0):.2f}%` (${risk.get('actual_risk_dollars', 100.0):.2f})\n"
+            f"• *Position Size:* `{risk.get('recommended_lots', 0.01):.2f} Lots`\n"
+            f"• *Risk/Reward:* `1:{risk.get('risk_reward_ratio', 2.0):.2f}`\n\n"
+            f"📝 *Status:* Setup logged for execution monitoring."
+        )
+        await query.edit_message_text(approved_msg, parse_mode="Markdown")
+
+    elif data.startswith("forex_dismiss_"):
+        setup_id = data.replace("forex_dismiss_", "")
+        if f"forex_setup_{setup_id}" in context.bot_data:
+            del context.bot_data[f"forex_setup_{setup_id}"]
+        await query.edit_message_text("🚫 *Market setup dismissed.*", parse_mode="Markdown")
+
+    elif data.startswith("forex_refresh_"):
+        pair = data.replace("forex_refresh_", "")
+        await query.edit_message_text(f"⏳ Refreshing market analysis for *{pair}*...", parse_mode="Markdown")
+        try:
+            res = await forex_coordinator.run({"pair": pair, "account_balance": 10000.0})
+            if res.is_success and res.data:
+                new_setup_id = str(uuid.uuid4())[:8]
+                context.bot_data[f"forex_setup_{new_setup_id}"] = res.data
+                card_text, reply_markup = format_forex_card(res.data, new_setup_id)
+                await query.edit_message_text(card_text, reply_markup=reply_markup, parse_mode="Markdown")
+            else:
+                await query.edit_message_text(f"❌ Failed to refresh {pair}: {res.error_message}")
+        except Exception as e:
+            logger.exception(f"Error during refresh: {e}")
+            await query.edit_message_text(f"❌ Error refreshing analysis: {e}")
+
 
 def main():
     global scheduler
@@ -1502,6 +1662,7 @@ def main():
             CommandHandler("start", start),
             CommandHandler("clip", clip_command_start),
             CommandHandler("tailor_cv", tailor_cv_command),
+            CommandHandler("check_market", check_market_command),
         ],
         states={
             MAIN_MENU: [
@@ -1586,10 +1747,12 @@ def main():
             CommandHandler("cancel", cancel),
             CommandHandler("start", start),
             CommandHandler("tailor_cv", tailor_cv_command),
+            CommandHandler("check_market", check_market_command),
         ],
         allow_reentry=True,
     )
 
+    application.add_handler(CommandHandler("check_market", check_market_command))
     application.add_handler(CallbackQueryHandler(handle_callback_query))
     application.add_handler(conv_handler)
 
