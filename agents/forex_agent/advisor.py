@@ -56,7 +56,7 @@ class ForexAdvisor(BaseAgent):
             target_1 = round(entry_price + 1.5 * atr, decimals)
             target_2 = round(entry_price + tp_multiplier * atr, decimals)
             thesis = (
-                f"Waiting for XAUUSD to tap the 1H/4H Order Block near {entry_2}. "
+                f"Waiting for XAUUSD to tap the 4H, 1H, 30m, or 15m Order Block near {entry_2}. "
                 f"Upon a 5m ChoCh with FVG displacement, limit orders activate at 50% FVG ({entry_1}) and Extreme OB ({entry_2})."
             )
         elif trend == "BEARISH":
@@ -68,7 +68,7 @@ class ForexAdvisor(BaseAgent):
             target_1 = round(entry_price - 1.5 * atr, decimals)
             target_2 = round(entry_price - tp_multiplier * atr, decimals)
             thesis = (
-                f"Waiting for XAUUSD to tap the 1H/4H Order Block near {entry_2}. "
+                f"Waiting for XAUUSD to tap the 4H, 1H, 30m, or 15m Order Block near {entry_2}. "
                 f"Upon a 5m ChoCh with FVG displacement, limit orders activate at 50% FVG ({entry_1}) and Extreme OB ({entry_2})."
             )
         else:
@@ -173,7 +173,7 @@ Synthesize the technical market regime and macroeconomic calendar into a high-co
    - For BEARISH bias: target_2 < target_1 < entry_1_aggressive_fvg <= entry_2_extreme_ob < stop_loss.
 4. Target_1 MUST be a 1:1 or 1:2 R:R from Entry 1. Target_2 MUST target the opposing HTF liquidity pool.
 5. If Defensive Hold is active, the thesis MUST clearly acknowledge the macro hold state.
-6. The 'thesis' MUST explicitly state the wait condition: "Waiting for XAUUSD to tap the HTF Order Block. Upon a 5m ChoCh with FVG displacement, limit orders activate at 50% FVG and Extreme OB."
+6. The 'thesis' MUST explicitly state the wait condition: "Waiting for XAUUSD to tap the 4H, 1H, 30m, or 15m Order Block. Upon a 5m ChoCh with FVG displacement, limit orders activate at 50% FVG and Extreme OB."
 
 JSON Output Format:
 {{
@@ -186,7 +186,7 @@ JSON Output Format:
     "target_1": 4328.00,
     "target_2": 4335.00
   }},
-  "thesis": "Waiting for XAUUSD to tap the 1H/4H Order Block near [Price]. Upon a 5m ChoCh with FVG displacement, limit orders activate at 50% FVG and Extreme OB."
+  "thesis": "Waiting for XAUUSD to tap the 4H, 1H, 30m, or 15m Order Block near [Price]. Upon a 5m ChoCh with FVG displacement, limit orders activate at 50% FVG and Extreme OB."
 }}
 """
         system_instruction = (
