@@ -28,7 +28,7 @@ By abstracting the orchestration layer from specialized sub-agents, Chronos enab
 
 *   **Intelligent Agent Orchestration:** Centralized command dispatch via an interactive Telegram-based GUI, facilitating human-in-the-loop (HITL) approval workflows before execution.
 *   **Dynamic Headless Automation:** Integrated Playwright and Twikit engines for sophisticated UI interactions, bypass handling, and seamless content publication across diverse platforms.
-*   **Resilient API Management:** Built-in load balancing and API key rotation for Google Gemini SDKs, ensuring high availability and fault tolerance.
+*   **Resilient API Management:** Built-in load balancing and API key rotation for Google Gemini SDKs across multiple keys (e.g., Keys 1-3 on `gemini-3.1-flash-lite`, Keys 4-5 on `gemini-3.5-flash-lite`), ensuring high availability and fault tolerance while avoiding quota limits.
 *   **Context-Aware Memory Systems:** JSON-backed persistent state management and circular buffering to maintain agent continuity, contextual memory, and state isolation.
 *   **Containerized Portability:** Fully dockerized architecture with robust background daemon execution, ready for deployment in modern cloud environments.
 
@@ -47,10 +47,12 @@ graph TD
     SA["🌐 Media & Social Agent<br/>(Content Synthesis & Publishing)"]
     FA["📈 Financial/Forex Agent<br/>(Market Analytics - WIP)"]
     JA["💼 Workflow Agent<br/>(Process Automation - WIP)"]
+    CA["🤖 General AI Chatbot<br/>(Multimodal Voice & Text)"]
 
     MO -- "Asynchronous Dispatch" --> SA
     MO -- "Asynchronous Dispatch" --> FA
     MO -- "Asynchronous Dispatch" --> JA
+    MO -- "Asynchronous Dispatch" --> CA
 
     %% Memory Module
     MEM[("🗄️ Persistent Memory Layer<br/>(State & History Buffer)")]
@@ -106,6 +108,12 @@ An automated career manager that acts as your personal job-seeking proxy.
 *   **Automated CV & Cover Letter Tailoring:** Uses Playwright to scrape a target job description URL, deeply analyzes the requirements, and instantly tailors your CV and Cover Letter to match.
 *   **Dynamic Formatting:** Generates premium, ATS-friendly PDFs using headless HTML rendering, automatically pulling the target company's brand color (with luminance-safety checks) and naming the files dynamically.
 
+#### 4.3.3 General AI Chatbot Agent
+A deeply integrated, multimodal conversational partner powered by native Gemini File APIs.
+*   **Native Voice Note Processing:** Supports uploading `.ogg`, `.wav`, and `.mp3` voice notes directly from Telegram to Gemini for reasoning, allowing natural, conversational speech without external Speech-to-Text layers.
+*   **Contextual Memory & Personas:** Maintains rolling user memory buffers and injects dynamic bio context (e.g., student background, tech stack, Trajour project, XAUUSD trading rules) into the "Standard" persona.
+*   **Visual Analysis:** Allows direct image uploads for vision-based reasoning.
+
 ---
 
 ## 5. Technical Specifications & Setup
@@ -120,8 +128,12 @@ System configuration relies on environment variables. Create a `.env` file in th
 
 ```env
 # AI Model Configuration (Supports Key Rotation & Load Balancing)
-GEMINI_API_KEY_1="primary_api_key"
-GEMINI_API_KEY_2="secondary_api_key"
+# You can define up to 5 keys to distribute requests across Gemini 3.1/3.5 models.
+GEMINI_API_KEY_1="primary_api_key_1"
+GEMINI_API_KEY_2="secondary_api_key_2"
+GEMINI_API_KEY_3="secondary_api_key_3"
+GEMINI_API_KEY_4="secondary_api_key_4"
+GEMINI_API_KEY_5="secondary_api_key_5"
 
 # Authentication Credentials
 X_USERNAME="service_account_username"
