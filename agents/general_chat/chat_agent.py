@@ -91,12 +91,7 @@ class ChatAgent:
             contents.append(history_text)
             
         # 2. Add media (Voice note, image, etc.)
-        # Use GEMINI_API_KEY_5 (dedicated for Native Audio/Chat) or fallback to default
-        chat_api_key = os.getenv("GEMINI_API_KEY_5") or os.getenv("GEMINI_API_KEY_1") or os.getenv("GEMINI_API_KEY")
-        client = genai.Client(api_key=chat_api_key)
-        # Using gemini-2.5-flash as it has native audio understanding
-        model_name = "gemini-2.5-flash"
-        
+        client, model_name = get_gemini_client_and_model()
         uploaded_file = None
         
         if media_path and os.path.exists(media_path):

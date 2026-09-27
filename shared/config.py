@@ -18,14 +18,14 @@ def get_gemini_client_and_model(attempt=None):
     # Map API keys to their designated models
     key_model_pairs = []
     
-    # Keys 1 and 2 use PRIMARY_MODEL (gemini-3.1-flash-lite)
-    for i in [1, 2]:
+    # Keys 1, 2, and 3 use PRIMARY_MODEL (gemini-3.1-flash-lite)
+    for i in [1, 2, 3]:
         key = os.getenv(f"GEMINI_API_KEY_{i}")
         if key:
             key_model_pairs.append((key, PRIMARY_MODEL))
             
-    # Keys 3 and 4 use SECONDARY_MODEL (gemini-3.5-flash-lite)
-    for i in [3, 4]:
+    # Keys 4 and 5 use SECONDARY_MODEL (gemini-3.5-flash-lite)
+    for i in [4, 5]:
         key = os.getenv(f"GEMINI_API_KEY_{i}")
         if key:
             key_model_pairs.append((key, SECONDARY_MODEL))
