@@ -77,6 +77,11 @@ class ChatAgent:
         """Processes a chat request, optionally with a voice note or image."""
         uid = str(user_id)
         system_instruction = self.personas.get(persona, self.personas["Standard"])
+        system_instruction += (
+            "\n\nCRITICAL FORMATTING RULE: You MUST format your response using ONLY basic HTML tags "
+            "(<b>bold</b>, <i>italic</i>, <u>underline</u>, <s>strikethrough</s>). "
+            "NEVER use Markdown formatting (like **, *, or #). Telegram requires HTML for formatting."
+        )
         history = self._get_history(uid)
         
         # Build contents array
@@ -97,7 +102,26 @@ class ChatAgent:
         if media_path and os.path.exists(media_path):
             try:
                 logger.info(f"Uploading media to Gemini: {media_path}")
-                uploaded_file = client.files.upload(file=media_path)
+                
+                # Determine explicit mime type to prevent Google GenAI SDK errors
+                mime_type = None
+                if media_path.endswith(".ogg"):
+                    mime_type = "audio/ogg"
+                elif media_path.endswith(".mp3"):
+                    mime_type = "audio/mp3"
+                elif media_path.endswith(".wav"):
+                    mime_type = "audio/wav"
+                elif media_path.endswith(".m4a"):
+                    mime_type = "audio/m4a"
+                elif media_path.endswith(".jpg") or media_path.endswith(".jpeg"):
+                    mime_type = "image/jpeg"
+                elif media_path.endswith(".png"):
+                    mime_type = "image/png"
+                
+                if mime_type:
+                    uploaded_file = client.files.upload(file=media_path, config={'mime_type': mime_type})
+                else:
+                    uploaded_file = client.files.upload(file=media_path)
                 
                 # If it's audio, Gemini might need a few seconds to process it
                 if media_path.endswith((".ogg", ".mp3", ".wav", ".m4a")):

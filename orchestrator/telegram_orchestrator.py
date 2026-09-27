@@ -838,12 +838,12 @@ async def main_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return MAIN_MENU
     elif text.startswith("5"):
         await update.message.reply_text(
-            "🤖 *Welcome to the General AI Chatbot!*\n\n"
+            "🤖 <b>Welcome to the General AI Chatbot!</b>\n\n"
             "• You can type normal messages.\n"
             "• You can send Voice Notes and I will transcribe/listen to them.\n"
             "• You can send Images and I will analyze them.\n\n"
-            "_Type /clear to reset memory, or 0 to exit._",
-            parse_mode="Markdown",
+            "<i>Type /clear to reset memory, or 0 to exit.</i>",
+            parse_mode="HTML",
             reply_markup=ReplyKeyboardRemove()
         )
         return CHAT_MENU
@@ -887,7 +887,7 @@ async def chat_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             message=text,
             media_path=media_path
         )
-        await safe_reply(update.message, reply_text)
+        await safe_reply(update.message, reply_text, parse_mode="HTML")
     except Exception as e:
         logger.error(f"ChatAgent error: {e}")
         await safe_reply(update.message, f"❌ Error: {e}")
