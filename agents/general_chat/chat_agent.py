@@ -2,6 +2,7 @@ import os
 import json
 import logging
 import time
+import re
 from typing import Dict, Any, List, Optional
 from google import genai
 from google.genai import types
@@ -77,11 +78,6 @@ class ChatAgent:
         """Processes a chat request, optionally with a voice note or image."""
         uid = str(user_id)
         system_instruction = self.personas.get(persona, self.personas["Standard"])
-        system_instruction += (
-            "\n\nCRITICAL FORMATTING RULE: You MUST format your response using ONLY basic HTML tags "
-            "(<b>bold</b>, <i>italic</i>, <u>underline</u>, <s>strikethrough</s>). "
-            "NEVER use Markdown formatting (like **, *, or #). Telegram requires HTML for formatting."
-        )
         history = self._get_history(uid)
         
         # Build contents array
@@ -155,7 +151,7 @@ class ChatAgent:
                 config=config
             )
             
-            reply_text = response.text.strip()
+            raw_reply = response.text.strip()
             
             # Save interaction to memory (don't save the raw audio, just the text)
             if message:
@@ -163,7 +159,10 @@ class ChatAgent:
             elif media_path:
                 self._add_to_history(uid, "user", "[Sent an audio/media file]")
                 
-            self._add_to_history(uid, "assistant", reply_text)
+            self._add_to_history(uid, "assistant", raw_reply)
+            
+            # Format the output cleanly for Telegram HTML
+            reply_text = self._format_for_telegram(raw_reply)
             
             # Cleanup uploaded file from Gemini server to save quota
             if uploaded_file:
@@ -177,3 +176,28 @@ class ChatAgent:
         except Exception as e:
             logger.error(f"Chat generation failed: {e}")
             return f"❌ AI encountered an error: {str(e)}"
+
+    def _format_for_telegram(self, text: str) -> str:
+        """Converts Markdown to strict Telegram-compatible HTML."""
+        # 1. Escape HTML characters to prevent Telegram parsing crashes
+        text = text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+        
+        # 2. Convert markdown headers (# Header) to Bold Uppercase
+        def header_replacer(match):
+            return f"<b>{match.group(1).upper()}</b>"
+        text = re.sub(r'^#+\s+(.*)$', header_replacer, text, flags=re.MULTILINE)
+        
+        # 3. Convert **bold** to <b>bold</b>
+        text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
+        
+        # 4. Convert list items (* or -) to bullet points (•)
+        text = re.sub(r'^\s*[\*\-]\s+', '• ', text, flags=re.MULTILINE)
+        
+        # 5. Convert remaining *italic* or _italic_ to <i>italic</i>
+        text = re.sub(r'\*(.*?)\*', r'<i>\1</i>', text)
+        text = re.sub(r'_(.*?)_', r'<i>\1</i>', text)
+        
+        # 6. Convert `code` to <code>code</code>
+        text = re.sub(r'`(.*?)`', r'<code>\1</code>', text)
+        
+        return text
