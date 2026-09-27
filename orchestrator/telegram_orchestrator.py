@@ -25,6 +25,7 @@ from agents.forex_agent.forex_coordinator import ForexCoordinator
 from agents.forex_agent.calendar_monitor import CalendarMonitor
 from shared.memory import MemoryManager
 from orchestrator.scheduler import AutonomousScheduler
+from agents.general_chat.chat_agent import ChatAgent
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
@@ -35,6 +36,7 @@ coordinator = SocialAgentCoordinator()
 forex_coordinator = ForexCoordinator()
 calendar_monitor = CalendarMonitor()
 memory_manager = MemoryManager()
+chat_agent = ChatAgent()
 scheduler = None
 
 
@@ -139,6 +141,7 @@ VIDEO_HASHTAGS = 27
 TAILOR_CV_TEXT = 28
 FOREX_MENU = 29
 FOREX_CUSTOM_PAIR = 30
+CHAT_MENU = 31
 
 # Keyboards
 main_menu_keyboard = [
@@ -146,6 +149,7 @@ main_menu_keyboard = [
     ["2. 💼 Job Seeking Agent"],
     ["3. 💱 Forex Agent"],
     ["4. 📅 Daily Updates Agent"],
+    ["5. 🤖 General AI Chatbot"],
     ["0. ❌ Exit"],
 ]
 
@@ -832,11 +836,66 @@ async def main_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "This agent is still in production.\nChoose another agent or exit."
         )
         return MAIN_MENU
+    elif text.startswith("5"):
+        await update.message.reply_text(
+            "🤖 *Welcome to the General AI Chatbot!*\n\n"
+            "• You can type normal messages.\n"
+            "• You can send Voice Notes and I will transcribe/listen to them.\n"
+            "• You can send Images and I will analyze them.\n\n"
+            "_Type /clear to reset memory, or 0 to exit._",
+            parse_mode="Markdown",
+            reply_markup=ReplyKeyboardRemove()
+        )
+        return CHAT_MENU
     else:
         await update.message.reply_text(
             "Invalid choice. Please choose from the keyboard."
         )
         return MAIN_MENU
+
+async def chat_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text
+    if text and text.startswith("0"):
+        reply_markup = ReplyKeyboardMarkup(main_menu_keyboard, resize_keyboard=True)
+        await safe_reply(update.message, "Returned to Main Menu.", reply_markup=reply_markup)
+        return MAIN_MENU
+
+    if text and text.lower() == "/clear":
+        chat_agent.clear_memory(str(update.effective_user.id))
+        await safe_reply(update.message, "🧹 Chat memory cleared!")
+        return CHAT_MENU
+
+    await update.message.chat.send_action(action="typing")
+    media_path = None
+
+    if update.message.voice or update.message.audio:
+        file_obj = await (update.message.voice or update.message.audio).get_file()
+        media_path = os.path.join(os.getcwd(), f"temp_voice_{uuid.uuid4().hex[:8]}.ogg")
+        await file_obj.download_to_drive(media_path)
+    elif update.message.photo:
+        file_obj = await update.message.photo[-1].get_file()
+        media_path = os.path.join(os.getcwd(), f"temp_photo_{uuid.uuid4().hex[:8]}.jpg")
+        await file_obj.download_to_drive(media_path)
+        text = update.message.caption
+
+    if not text and not media_path:
+        return CHAT_MENU
+
+    try:
+        reply_text = await chat_agent.chat(
+            user_id=update.effective_user.id,
+            message=text,
+            media_path=media_path
+        )
+        await safe_reply(update.message, reply_text)
+    except Exception as e:
+        logger.error(f"ChatAgent error: {e}")
+        await safe_reply(update.message, f"❌ Error: {e}")
+    finally:
+        if media_path and os.path.exists(media_path):
+            os.remove(media_path)
+
+    return CHAT_MENU
 
 
 async def social_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1948,6 +2007,10 @@ def main():
             ],
             FOREX_CUSTOM_PAIR: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, receive_forex_pair)
+            ],
+            CHAT_MENU: [
+                MessageHandler(filters.ALL & ~filters.COMMAND, chat_menu_handler),
+                CommandHandler("clear", chat_menu_handler)
             ],
         },
         fallbacks=[
