@@ -50,38 +50,38 @@ class ForexAdvisor(BaseAgent):
         if trend == "BULLISH":
             bias = "BULLISH"
             entry_price = current_price
-            entry_low = round(entry_price - 0.15 * atr, decimals)
-            entry_high = round(entry_price + 0.1 * atr, decimals)
+            entry_1 = round(entry_price - 0.15 * atr, decimals)
+            entry_2 = round(entry_price - 0.20 * atr, decimals)
             stop_loss = round(entry_price - sl_multiplier * atr, decimals)
-            invalidation = stop_loss
-            target = round(entry_price + tp_multiplier * atr, decimals)
+            target_1 = round(entry_price + 1.5 * atr, decimals)
+            target_2 = round(entry_price + tp_multiplier * atr, decimals)
             thesis = (
-                f"Gold (XAUUSD) Day Trade & Scalp: Price respects 15M EMA dynamic support aligned with broader market structure. "
-                f"We initiate long scalp exposure on pullbacks toward support with thesis invalidation below {invalidation}."
+                f"Waiting for XAUUSD to tap the 1H/4H Order Block near {entry_2}. "
+                f"Upon a 5m ChoCh with FVG displacement, limit orders activate at 50% FVG ({entry_1}) and Extreme OB ({entry_2})."
             )
         elif trend == "BEARISH":
             bias = "BEARISH"
             entry_price = current_price
-            entry_low = round(entry_price - 0.1 * atr, decimals)
-            entry_high = round(entry_price + 0.15 * atr, decimals)
+            entry_1 = round(entry_price + 0.15 * atr, decimals)
+            entry_2 = round(entry_price + 0.20 * atr, decimals)
             stop_loss = round(entry_price + sl_multiplier * atr, decimals)
-            invalidation = stop_loss
-            target = round(entry_price - tp_multiplier * atr, decimals)
+            target_1 = round(entry_price - 1.5 * atr, decimals)
+            target_2 = round(entry_price - tp_multiplier * atr, decimals)
             thesis = (
-                f"Gold (XAUUSD) Day Trade & Scalp: Spot price rejects dynamic resistance with 15M EMA cluster confirming intraday supply. "
-                f"Short scalp orders target local liquidity pools below, invalidating strictly above {invalidation}."
+                f"Waiting for XAUUSD to tap the 1H/4H Order Block near {entry_2}. "
+                f"Upon a 5m ChoCh with FVG displacement, limit orders activate at 50% FVG ({entry_1}) and Extreme OB ({entry_2})."
             )
         else:
             bias = "NEUTRAL"
             entry_price = current_price
-            entry_low = round(entry_price - 0.1 * atr, decimals)
-            entry_high = round(entry_price + 0.1 * atr, decimals)
+            entry_1 = round(entry_price - 0.1 * atr, decimals)
+            entry_2 = round(entry_price - 0.2 * atr, decimals)
             stop_loss = round(entry_price - sl_multiplier * atr, decimals)
-            invalidation = stop_loss
-            target = round(entry_price + tp_multiplier * atr, decimals)
+            target_1 = round(entry_price + 1.5 * atr, decimals)
+            target_2 = round(entry_price + tp_multiplier * atr, decimals)
             thesis = (
-                f"Gold (XAUUSD) Intraday Standby: Gold consolidates in a narrow range ahead of institutional liquidity catalysts. "
-                "Scalp entries are withheld until price sweeps session boundaries with confirmed volume."
+                f"XAUUSD Intraday Standby: Consolidating ahead of institutional liquidity catalysts. "
+                "Awaiting clear sweep of session boundaries and 5m ChoCh to form entries."
             )
 
         if defensive_hold:
@@ -93,11 +93,12 @@ class ForexAdvisor(BaseAgent):
         return {
             "market_bias": bias,
             "key_levels": {
-                "entry_range": f"{entry_low} - {entry_high}",
-                "entry_price": round(entry_price, decimals),
-                "invalidation": invalidation,
+                "htf_ob_zone": f"{entry_2} - {entry_price}",
+                "entry_1_aggressive_fvg": entry_1,
+                "entry_2_extreme_ob": entry_2,
                 "stop_loss": stop_loss,
-                "target": target,
+                "target_1": target_1,
+                "target_2": target_2,
             },
             "thesis": thesis,
         }
@@ -167,24 +168,25 @@ Synthesize the technical market regime and macroeconomic calendar into a high-co
 === MANDATORY RISK INSTRUCTIONS ===
 1. Return a single strictly valid JSON object. Do not wrap in conversational chit-chat.
 2. Market Bias MUST be one of: "BULLISH", "BEARISH", or "NEUTRAL".
-3. Key levels MUST respect strict mathematical risk geometry:
-   - For BULLISH bias: stop_loss < entry_price < target. The target MUST provide AT LEAST a 1:2.0 Risk-to-Reward ratio (target - entry >= 2.0 * (entry - stop_loss)).
-   - For BEARISH bias: target < entry_price < stop_loss. The target MUST provide AT LEAST a 1:2.0 Risk-to-Reward ratio (entry - target >= 2.0 * (stop_loss - entry)).
-   - For NEUTRAL bias: provide standard breakout bounds with stop_loss and target honoring >= 1:2 RR.
-4. If Defensive Hold is active, the thesis MUST clearly acknowledge the macro hold state.
-5. The 'thesis' MUST be exactly 2 concise, professional sentences.
+3. Key levels MUST respect strict mathematical risk geometry from the Performance-Based SMC Strategy:
+   - For BULLISH bias: stop_loss < entry_2_extreme_ob <= entry_1_aggressive_fvg < target_1 < target_2. 
+   - For BEARISH bias: target_2 < target_1 < entry_1_aggressive_fvg <= entry_2_extreme_ob < stop_loss.
+4. Target_1 MUST be a 1:1 or 1:2 R:R from Entry 1. Target_2 MUST target the opposing HTF liquidity pool.
+5. If Defensive Hold is active, the thesis MUST clearly acknowledge the macro hold state.
+6. The 'thesis' MUST explicitly state the wait condition: "Waiting for XAUUSD to tap the HTF Order Block. Upon a 5m ChoCh with FVG displacement, limit orders activate at 50% FVG and Extreme OB."
 
 JSON Output Format:
 {{
   "market_bias": "BULLISH" | "BEARISH" | "NEUTRAL",
   "key_levels": {{
-    "entry_range": "low_val - high_val",
-    "entry_price": 1.0850,
-    "invalidation": 1.0800,
-    "stop_loss": 1.0800,
-    "target": 1.0960
+    "htf_ob_zone": "4320.00 - 4322.00",
+    "entry_1_aggressive_fvg": 4323.50,
+    "entry_2_extreme_ob": 4321.00,
+    "stop_loss": 4319.00,
+    "target_1": 4328.00,
+    "target_2": 4335.00
   }},
-  "thesis": "First sentence analyzing institutional catalyst and trend confluence. Second sentence defining execution trigger and risk boundary."
+  "thesis": "Waiting for XAUUSD to tap the 1H/4H Order Block near [Price]. Upon a 5m ChoCh with FVG displacement, limit orders activate at 50% FVG and Extreme OB."
 }}
 """
         system_instruction = (
@@ -212,20 +214,18 @@ JSON Output Format:
 
             levels = briefing.get("key_levels", {})
             if (
-                "entry_price" not in levels
+                "entry_1_aggressive_fvg" not in levels
                 or "stop_loss" not in levels
-                or "target" not in levels
+                or "target_1" not in levels
             ):
                 return default_fallback
 
             # Ensure numeric float conversion
-            levels["entry_price"] = float(levels["entry_price"])
+            levels["entry_1_aggressive_fvg"] = float(levels.get("entry_1_aggressive_fvg", default_fallback["key_levels"]["entry_1_aggressive_fvg"]))
+            levels["entry_2_extreme_ob"] = float(levels.get("entry_2_extreme_ob", levels["entry_1_aggressive_fvg"]))
             levels["stop_loss"] = float(levels["stop_loss"])
-            levels["target"] = float(levels["target"])
-            if "invalidation" in levels:
-                levels["invalidation"] = float(levels["invalidation"])
-            else:
-                levels["invalidation"] = levels["stop_loss"]
+            levels["target_1"] = float(levels.get("target_1", default_fallback["key_levels"]["target_1"]))
+            levels["target_2"] = float(levels.get("target_2", levels["target_1"]))
 
             return briefing
 

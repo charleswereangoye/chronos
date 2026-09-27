@@ -150,9 +150,8 @@ main_menu_keyboard = [
 ]
 
 forex_menu_keyboard = [
-    ["1. 🥇 Analyze Gold (XAUUSD) — Day Trade & Scalp"],
-    ["2. ⚡ Quick Check Other Pair"],
-    ["3. 🛡️ Macro News & Calendar Shield"],
+    ["1. 🥇 Analyze Gold (XAUUSD) — Intraday / Day Trade"],
+    ["2. 🛡️ Macro News & Calendar Shield"],
     ["0. 🔙 Back to Main Menu"],
 ]
 
@@ -600,11 +599,12 @@ def format_forex_card(setup: dict, setup_id: str) -> tuple[str, InlineKeyboardMa
         f"*Bias:* {bias_emoji} *{bias}* | *Status:* `{action}`\n"
         f"{hold_banner}\n"
         f"🎯 *Key Execution Levels:*\n"
-        f"{style_line}"
-        f"• *Entry Range:* `{key_levels.get('entry_range', key_levels.get('entry_price'))}`\n"
+        f"• *HTF OB Zone:* `{key_levels.get('htf_ob_zone', 'N/A')}`\n"
+        f"• *Entry 1 (50% FVG):* `{key_levels.get('entry_1_aggressive_fvg')}`\n"
+        f"• *Entry 2 (Extreme OB):* `{key_levels.get('entry_2_extreme_ob')}`\n"
         f"• *Stop Loss:* `{key_levels.get('stop_loss')}` ({risk_pips:.1f} pips)\n"
-        f"• *Target (TP):* `{key_levels.get('target')}` ({reward_pips:.1f} pips)\n"
-        f"• *Invalidation:* `{key_levels.get('invalidation')}`\n\n"
+        f"• *Target 1 (1:2):* `{key_levels.get('target_1')}` ({reward_pips:.1f} pips)\n"
+        f"• *Target 2 (Runner):* `{key_levels.get('target_2')}`\n\n"
         f"{intraday_line}"
         f"🛡️ *Risk Guard Constraints:*\n"
         f"• *Risk-to-Reward:* `1:{rr_val:.2f}` {rr_icon} (Min 1:2.0)\n"
@@ -679,16 +679,7 @@ async def forex_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     elif text.startswith("1") or "gold" in text.lower() or "xau" in text.lower():
         return await run_forex_analysis(update, context, "XAUUSD")
 
-    elif text.startswith("2") or "quick" in text.lower() or "other" in text.lower():
-        reply_markup = ReplyKeyboardMarkup(quick_pairs_keyboard, resize_keyboard=True)
-        await safe_reply(
-            update.message,
-            "💱 *Quick Market Check*\n\nSelect a pair below or type any symbol to analyze (e.g. `EURUSD`, `USDJPY`, `GBPUSD`, `BTCUSD`):",
-            reply_markup=reply_markup,
-        )
-        return FOREX_CUSTOM_PAIR
-
-    elif text.startswith("3") or "calendar" in text.lower() or "shield" in text.lower():
+    elif text.startswith("2") or "calendar" in text.lower() or "shield" in text.lower():
         await safe_reply(
             update.message,
             "⏳ Ingesting macroeconomic calendar feeds and evaluating news shield for Gold & FX...",

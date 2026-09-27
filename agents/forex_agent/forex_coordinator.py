@@ -75,11 +75,16 @@ class ForexCoordinator(BaseAgent):
         key_levels = briefing.get("key_levels", {})
         thesis = briefing.get("thesis", "No thesis generated.")
 
-        entry_price = float(key_levels.get("entry_price", regime_data.get("current_price", 1.0)))
-        stop_loss = float(key_levels.get("stop_loss", entry_price * 0.99))
-        target_price = float(key_levels.get("target", entry_price * 1.02))
-        invalidation = float(key_levels.get("invalidation", stop_loss))
-        entry_range = key_levels.get("entry_range", f"{entry_price}")
+        entry_1 = float(key_levels.get("entry_1_aggressive_fvg", regime_data.get("current_price", 1.0)))
+        entry_2 = float(key_levels.get("entry_2_extreme_ob", entry_1))
+        stop_loss = float(key_levels.get("stop_loss", entry_1 * 0.99))
+        target_1 = float(key_levels.get("target_1", entry_1 * 1.02))
+        target_2 = float(key_levels.get("target_2", target_1))
+        htf_ob_zone = key_levels.get("htf_ob_zone", "N/A")
+
+        # Use the aggressive entry and target_1 for the risk calculation
+        entry_price = entry_1
+        target_price = target_1
 
         # Step 4: Mathematical Safety Bounds via RiskGuard
         direction = "BUY" if market_bias == "BULLISH" else ("SELL" if market_bias == "BEARISH" else "NEUTRAL")
@@ -120,11 +125,12 @@ class ForexCoordinator(BaseAgent):
             "market_bias": market_bias,
             "current_price": regime_data.get("current_price", entry_price),
             "key_levels": {
-                "entry_range": entry_range,
-                "entry_price": entry_price,
-                "invalidation": invalidation,
+                "htf_ob_zone": htf_ob_zone,
+                "entry_1_aggressive_fvg": entry_1,
+                "entry_2_extreme_ob": entry_2,
                 "stop_loss": stop_loss,
-                "target": target_price,
+                "target_1": target_1,
+                "target_2": target_2,
             },
             "risk_evaluation": risk_data,
             "thesis": thesis,
