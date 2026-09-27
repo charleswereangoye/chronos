@@ -5,6 +5,7 @@ import math
 import logging
 import uuid
 import httpx
+import re
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder,
@@ -54,7 +55,36 @@ async def safe_edit_message_text(query, text, reply_markup=None, parse_mode="Mar
             return None
 
 
-async def safe_reply(message_target, text, reply_markup=None, parse_mode="Markdown", **kwargs):
+def format_markdown_to_telegram_html(text: str) -> str:
+    """Converts Markdown to strict Telegram-compatible HTML."""
+    if not text:
+        return text
+    # 1. Escape HTML characters to prevent Telegram parsing crashes
+    text = text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+    
+    # 2. Convert markdown headers (# Header) to Bold Uppercase
+    def header_replacer(match):
+        return f"<b>{match.group(1).upper()}</b>"
+    text = re.sub(r'^#+\s+(.*)$', header_replacer, text, flags=re.MULTILINE)
+    
+    # 3. Convert **bold** to <b>bold</b>
+    text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
+    
+    # 4. Convert legacy *bold* to <b>bold</b> (to support orchestrator formatting)
+    text = re.sub(r'\*([^\*]+?)\*', r'<b>\1</b>', text)
+    
+    # 5. Convert list items (* or -) to bullet points (•)
+    text = re.sub(r'^\s*[\*\-]\s+', '• ', text, flags=re.MULTILINE)
+    
+    # 6. Convert remaining _italic_ to <i>italic</i>
+    text = re.sub(r'_(.*?)_', r'<i>\1</i>', text)
+    
+    # 7. Convert `code` to <code>code</code>
+    text = re.sub(r'`(.*?)`', r'<code>\1</code>', text)
+    
+    return text
+
+async def safe_reply(message_target, text, reply_markup=None, parse_mode="HTML", **kwargs):
     if hasattr(message_target, "reply_text"):
         target = message_target
     elif hasattr(message_target, "message") and message_target.message:
@@ -64,6 +94,9 @@ async def safe_reply(message_target, text, reply_markup=None, parse_mode="Markdo
 
     if not text or not target:
         return None
+        
+    if parse_mode == "HTML":
+        text = format_markdown_to_telegram_html(text)
         
     chunk_size = 4000
     if len(text) > chunk_size:
@@ -83,7 +116,7 @@ async def safe_reply(message_target, text, reply_markup=None, parse_mode="Markdo
         logger.warning(f"Failed to send markdown reply: {err}. Falling back to plain text.")
         return await target.reply_text(text, parse_mode=None, reply_markup=reply_markup, **kwargs)
 
-async def safe_reply_photo(message_target, photo, caption=None, reply_markup=None, parse_mode="Markdown", **kwargs):
+async def safe_reply_photo(message_target, photo, caption=None, reply_markup=None, parse_mode="HTML", **kwargs):
     if hasattr(message_target, "reply_photo"):
         target = message_target
     elif hasattr(message_target, "message") and message_target.message:
@@ -91,19 +124,26 @@ async def safe_reply_photo(message_target, photo, caption=None, reply_markup=Non
     else:
         target = message_target
 
+    if caption and parse_mode == "HTML":
+        caption = format_markdown_to_telegram_html(caption)
+
     try:
         return await target.reply_photo(photo=photo, caption=caption, parse_mode=parse_mode, reply_markup=reply_markup, **kwargs)
     except Exception as err:
         logger.warning(f"Failed to send photo with markdown: {err}. Falling back to plain caption.")
         return await target.reply_photo(photo=photo, caption=caption, parse_mode=None, reply_markup=reply_markup, **kwargs)
 
-async def safe_reply_video(message_target, video, caption=None, reply_markup=None, parse_mode="Markdown", **kwargs):
+async def safe_reply_video(message_target, video, caption=None, reply_markup=None, parse_mode="HTML", **kwargs):
     if hasattr(message_target, "reply_video"):
         target = message_target
     elif hasattr(message_target, "message") and message_target.message:
         target = message_target.message
     else:
         target = message_target
+        
+    if caption and parse_mode == "HTML":
+        caption = format_markdown_to_telegram_html(caption)
+        
     try:
         return await target.reply_video(video=video, caption=caption, parse_mode=parse_mode, reply_markup=reply_markup, **kwargs)
     except Exception as err:
