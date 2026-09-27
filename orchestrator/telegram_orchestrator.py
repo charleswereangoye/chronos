@@ -633,7 +633,7 @@ async def run_forex_analysis(update: Update, context: ContextTypes.DEFAULT_TYPE,
     pair = pair.upper().replace("/", "").strip()
     is_gold = "XAU" in pair or "GOLD" in pair
     if is_gold:
-        msg = "⏳ Running quantitative analysis for *Gold (XAUUSD)*...\n_Scanning 15M Scalp Structure, 1H/4H Macro Trend, Asian Range Liquidity, and Risk-to-Reward Ratio..._"
+        msg = "⏳ Running quantitative analysis for *Gold (XAUUSD)*...\n_Scanning 4H/1H/30m/15m Order Blocks, 5m Market Structure (ChoCh/FVG), and Risk-to-Reward Ratio..._"
     else:
         msg = f"⏳ Running quantitative market check for *{pair}*...\n_Analyzing Multi-Timeframe Candles, High-Impact Macro Shield, and Institutional Liquidity..._"
 

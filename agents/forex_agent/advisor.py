@@ -172,19 +172,20 @@ Synthesize the technical market regime and macroeconomic calendar into a high-co
    - For BULLISH bias: stop_loss < entry_2_extreme_ob <= entry_1_aggressive_fvg < target_1 < target_2. 
    - For BEARISH bias: target_2 < target_1 < entry_1_aggressive_fvg <= entry_2_extreme_ob < stop_loss.
 4. Target_1 MUST be a 1:1 or 1:2 R:R from Entry 1. Target_2 MUST target the opposing HTF liquidity pool.
-5. If Defensive Hold is active, the thesis MUST clearly acknowledge the macro hold state.
+5. IF price is NOT actively at a major HTF Order Block (15m, 30m, 1H, 4H) or there is no clear setup, you MUST set Market Bias to "NEUTRAL" and reject the trade.
 6. The 'thesis' MUST explicitly state the wait condition: "Waiting for XAUUSD to tap the 4H, 1H, 30m, or 15m Order Block. Upon a 5m ChoCh with FVG displacement, limit orders activate at 50% FVG and Extreme OB."
+7. DO NOT COPY THE PLACEHOLDER VALUES IN THE JSON FORMAT! You MUST calculate the levels relative to the Current Spot Price!
 
 JSON Output Format:
 {{
   "market_bias": "BULLISH" | "BEARISH" | "NEUTRAL",
   "key_levels": {{
-    "htf_ob_zone": "4320.00 - 4322.00",
-    "entry_1_aggressive_fvg": 4323.50,
-    "entry_2_extreme_ob": 4321.00,
-    "stop_loss": 4319.00,
-    "target_1": 4328.00,
-    "target_2": 4335.00
+    "htf_ob_zone": "Calculate based on Current Price",
+    "entry_1_aggressive_fvg": 0.00,
+    "entry_2_extreme_ob": 0.00,
+    "stop_loss": 0.00,
+    "target_1": 0.00,
+    "target_2": 0.00
   }},
   "thesis": "Waiting for XAUUSD to tap the 4H, 1H, 30m, or 15m Order Block near [Price]. Upon a 5m ChoCh with FVG displacement, limit orders activate at 50% FVG and Extreme OB."
 }}
