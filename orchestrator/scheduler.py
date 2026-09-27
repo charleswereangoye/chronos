@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from agents.job_seeking.job_scraper import JobScraper
+from agents.forex_agent.forex_coordinator import ForexCoordinator
 
 logger = logging.getLogger("AutonomousScheduler")
 
@@ -15,6 +16,7 @@ class AutonomousScheduler:
     def __init__(self, application):
         self.app = application
         self.job_scraper = JobScraper()
+        self.forex_coordinator = ForexCoordinator()
         self.running = False
         self._load_state()
 
@@ -65,7 +67,7 @@ class AutonomousScheduler:
             matches_text = await self.job_scraper.find_matches(force_refresh_profile=True)
             
             # Send notification
-            header = "📡 <b>CHRONOS JOB RADAR: LATEST MATCHES</b>\n\n"
+            header = "📡 *CHRONOS JOB RADAR: LATEST MATCHES*\n\n"
             msg = header + matches_text
             
             # Telegram character limit safety
@@ -76,13 +78,13 @@ class AutonomousScheduler:
                     await self.app.bot.send_message(
                         chat_id=self.target_chat_id,
                         text=chunk,
-                        parse_mode=None
+                        parse_mode="Markdown"
                     )
             else:
                 await self.app.bot.send_message(
                     chat_id=self.target_chat_id,
                     text=msg,
-                    parse_mode=None
+                    parse_mode="Markdown"
                 )
                 
             self.last_job_radar_time = now
@@ -90,6 +92,36 @@ class AutonomousScheduler:
             logger.info("Autonomous Job Radar scan delivered to Telegram.")
         except Exception as e:
             logger.error(f"Autonomous Job Radar failed: {e}")
+
+    async def run_autonomous_forex_radar(self):
+        if not self.target_chat_id:
+            return
+
+        try:
+            res = await self.forex_coordinator.run({"pair": "XAUUSD", "account_balance": 10000.0, "mode": "day_trade"})
+            if res.is_success and res.data:
+                setup = res.data
+                action = setup.get("trade_action", "")
+                
+                # Only alert the user if a pristine setup is found to prevent spam fatigue
+                if action == "READY_FOR_HITL_REVIEW":
+                    # Import the card formatter dynamically to avoid circular imports
+                    from orchestrator.telegram_orchestrator import format_forex_card
+                    import uuid
+                    setup_id = str(uuid.uuid4())[:8]
+                    
+                    # Store setup data in bot_data so the approval buttons work
+                    self.app.bot_data[f"forex_setup_{setup_id}"] = setup
+                    
+                    card_text, reply_markup = format_forex_card(setup, setup_id)
+                    await self.app.bot.send_message(
+                        chat_id=self.target_chat_id,
+                        text=f"🚨 *AUTONOMOUS 5M GOLD SCANNER: SETUP FOUND* 🚨\n\n{card_text}",
+                        parse_mode="Markdown",
+                        reply_markup=reply_markup
+                    )
+        except Exception as e:
+            logger.error(f"Autonomous Forex Radar failed: {e}")
 
     async def start_loop(self):
         """Main autonomous background loop running inside Podman."""
@@ -104,10 +136,13 @@ class AutonomousScheduler:
 
         while self.running:
             try:
-                await asyncio.sleep(1800)  # Check every 30 minutes
+                await asyncio.sleep(300)  # Check every 5 minutes (300 seconds)
                 now = datetime.now()
                 
-                # Check for Job Radar every 6 hours
+                # Run Forex Gold Scanner every 5 minutes
+                await self.run_autonomous_forex_radar()
+                
+                # Run Job Radar every 6 hours
                 if not self.last_job_radar_time or now - self.last_job_radar_time >= timedelta(hours=6):
                     await self.run_autonomous_job_radar()
 

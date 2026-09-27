@@ -30,16 +30,15 @@ class ForexCoordinator(BaseAgent):
 
     async def analyze_market(
         self,
-        pair: str = "EURUSD",
+        pair: str = "XAUUSD",
         account_balance: float = 10000.0,
         reference_time: Any | None = None,
         custom_payload: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Runs the complete 4-step pipeline and produces an institutional trade setup."""
-        pair = pair.upper().strip()
+        pair = "XAUUSD"
         custom_payload = custom_payload or {}
-        is_gold = "XAU" in pair or "GOLD" in pair
-        mode = "day_trade" if is_gold else custom_payload.get("mode", "swing")
+        mode = "day_trade"
 
         # Step 1: Macro Gatekeeper
         calendar_payload = {
@@ -138,7 +137,7 @@ class ForexCoordinator(BaseAgent):
 
     async def execute(self, payload: dict[str, Any] | None = None) -> AgentResult:
         payload = payload or {}
-        pair = payload.get("pair", "EURUSD")
+        pair = "XAUUSD"
         balance = float(payload.get("account_balance", payload.get("balance", 10000.0)))
         ref_time = payload.get("reference_time")
 

@@ -45,6 +45,10 @@ class JobScraper:
         if any(term in title_lower for term in NON_TECH_TERMS):
             return False
 
+        # Exclude German speaking requirements and paid application sites
+        if any(term in title_lower or term in desc_lower for term in ["german", "deutsch", "pay to apply", "application fee"]):
+            return False
+
         # Must have software/tech relevance in title, tags, or description
         is_software = (
             any(term in title_lower for term in SOFTWARE_TERMS)
@@ -201,11 +205,11 @@ TASK:
 1. Select the TOP 3 to 5 jobs where this candidate has the strongest competitive advantage based strictly on their actual stack ({skills_str}) and current level ({seniority}).
 2. Rank them by Match Quality.
 3. ABSOLUTELY NO em-dashes (—). Use standard hyphens (-) or colons (:).
-4. For each selected match, format with clean markdown:
-   🎯 **[Job Title]** at **[Company]**
-   📊 **Match Score & Level**: (e.g. 92% Match - Junior / Full-Stack)
-   💡 **Why You Fit**: 1-2 punchy sentences explicitly detailing how their skills ({skills_str}) directly solve the role's requirements.
-   🔗 **Direct Apply URL**: [Link]
+4. For each selected match, format with clean Telegram Markdown (use single asterisks for bolding, NO headers like ###):
+   🎯 *[Job Title]* at *[Company]*
+   📊 *Match Score & Level*: (e.g. 92% Match - Junior / Full-Stack)
+   💡 *Why You Fit*: 1-2 punchy sentences explicitly detailing how their skills ({skills_str}) directly solve the role's requirements.
+   🔗 *Direct Apply URL*: [Link]
 """
         response = generate_content_with_failover(prompt_text=prompt)
         return response.text.strip()

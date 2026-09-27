@@ -125,7 +125,7 @@ CRITICAL INSTRUCTIONS:
         {{
             "role": "Backend Developer Intern & Team Lead",
             "company": "Infinity Innovations Co.",
-            "duration": "May 2026 - Present",
+            "duration": "May 2026 - August 2026",
             "highlights": [
                 "Led backend development workflows, assigning daily tasks and performing rigorous code reviews to maintain repository stability.",
                 "Engineered scalable RESTful API endpoints and optimized database schemas in Python and PostgreSQL for low-latency client requests."
@@ -200,7 +200,7 @@ LIVE CANDIDATE DATA:
             "name": "Charles Were Angoye",
             "title": "Full-Stack Software Engineer",
             "seniority_level": "junior",
-            "current_status": "Software Engineering Student & Full-Stack Developer",
+            "current_status": "Software Engineering Student actively seeking roles",
             "email": "charleswereangoye@gmail.com",
             "phone": "KE: +254 719 403 678 | RW: +250 795 589 824",
             "location": "Kigali, Rwanda / Nairobi, Kenya (GMT+2 / EAT)",
@@ -213,7 +213,7 @@ LIVE CANDIDATE DATA:
                 {
                     "role": "Backend Developer Intern & Team Lead",
                     "company": "Infinity Innovations Co.",
-                    "duration": "May 2026 - Present",
+                    "duration": "May 2026 - August 2026",
                     "highlights": [
                         "Stepped up as the backend team lead, assigning daily tasks and conducting code reviews to maintain repository stability.",
                         "Architected scalable RESTful API endpoints and optimized database schemas in Python and PostgreSQL."
